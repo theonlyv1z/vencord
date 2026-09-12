@@ -229,7 +229,12 @@ export function maxUploadSize(channelId?: string): number {
 let hideUploadRefs = 0;
 const HIDE_STYLE_ID = "vc-nwc-hide-upload-style";
 const HIDE_SELECTORS = [
-    // the pending message row that is mid-upload (removes the empty gap)
+    // the pending message row while it is still sending (covers both the
+    // upload and the brief window before the server confirms it), so no
+    // timestamp/avatar gutter peeks beside our card. Revealed as the finished
+    // video once it settles.
+    'li:has([class*="isSending_"])',
+    '[class*="messageListItem"]:has([class*="isSending_"])',
     'li:has([class*="progressContainer"])',
     'li:has([class*="mediaBarProgress"])',
     '[class*="messageListItem"]:has([class*="progressContainer"])',
@@ -238,7 +243,13 @@ const HIDE_SELECTORS = [
     '[class*="attachmentsWrapper_"]',
     '[class*="attachmentContainer_"]',
     '[class*="channelAttachmentArea_"]',
-    '[class*="uploadCard_"]'
+    '[class*="uploadCard_"]',
+    // the file-style upload preview (composer non-media / in-chat), which is
+    // not inside an attachmentContainer_ or an <li>
+    '[class*="fileWrapper__"]:has([class*="progressContainer"])',
+    '[class*="fileWrapper__"]:has([class*="mediaBarProgress"])',
+    '[class*="file__"]:has([class*="progressContainer"])',
+    '[class*="file__"]:has([class*="mediaBarProgress"])'
 ];
 const HIDE_CSS = HIDE_SELECTORS.join(",") + "{display:none !important;}";
 
