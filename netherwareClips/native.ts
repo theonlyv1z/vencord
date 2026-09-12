@@ -5,7 +5,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
+import { readdir, readFile, rename, stat, unlink, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { CspPolicies, ImageAndMediaSrc } from "@main/csp";
@@ -79,40 +80,44 @@ function cachePath(url: string) {
     return join(getCacheDir(), createHash("sha1").update(url).digest("hex") + ".mp4");
 }
 
-function cacheGet(url: string): Uint8Array | null {
+async function cacheGet(url: string): Promise<Uint8Array | null> {
     const file = cachePath(url);
     if (!existsSync(file)) return null;
     try {
-        const bytes = new Uint8Array(readFileSync(file));
+        const bytes = new Uint8Array(await readFile(file));
         const now = new Date();
-        utimesSync(file, now, now);
+        utimes(file, now, now).catch(() => { });
         return bytes;
     } catch {
         return null;
     }
 }
 
-function cachePut(url: string, bytes: Uint8Array) {
+async function cachePut(url: string, bytes: Uint8Array) {
     try {
-        writeFileSync(cachePath(url), bytes);
-        trimCache();
+        const file = cachePath(url);
+        await writeFile(file + ".part", bytes);
+        await rename(file + ".part", file);
+        await trimCache();
     } catch { }
 }
 
-function trimCache() {
+async function trimCache() {
     try {
         const d = getCacheDir();
-        const files = readdirSync(d).map(name => {
+        const names = await readdir(d);
+        const files: { full: string; size: number; atime: number; }[] = [];
+        for (const name of names) {
             const full = join(d, name);
-            const st = statSync(full);
-            return { full, size: st.size, atime: st.mtimeMs };
-        });
+            const st = await stat(full).catch(() => null);
+            if (st) files.push({ full, size: st.size, atime: st.mtimeMs });
+        }
         let total = files.reduce((n, f) => n + f.size, 0);
         if (total <= CACHE_LIMIT) return;
         files.sort((a, b) => a.atime - b.atime);
         for (const f of files) {
             if (total <= CACHE_LIMIT) break;
-            try { unlinkSync(f.full); total -= f.size; } catch { }
+            await unlink(f.full).then(() => { total -= f.size; }, () => { });
         }
     } catch { }
 }
@@ -138,7 +143,7 @@ function runDownload(u: URL, dl: Download, onDone?: () => void) {
                 dl.chunks.push(value);
                 dl.received += value.byteLength;
             }
-            if (!dl.total || dl.received === dl.total) cachePut(u.toString(), joinChunks(dl));
+            if (!dl.total || dl.received === dl.total) await cachePut(u.toString(), joinChunks(dl));
         } catch (e) {
             dl.error = String((e as Error)?.message ?? e);
         } finally {
@@ -148,25 +153,51 @@ function runDownload(u: URL, dl: Download, onDone?: () => void) {
     })();
 }
 
+let activePrefetch: { key: string; dl: Download; } | null = null;
+
+function isClaimed(dl: Download) {
+    for (const d of downloads.values()) if (d === dl) return true;
+    return false;
+}
+
 export function prefetch(_: IpcMainInvokeEvent, url: string) {
     const u = assertAllowed(url);
     const key = u.toString();
     if (prefetching.has(key) || existsSync(cachePath(key))) return;
+
+    if (activePrefetch && !activePrefetch.dl.done && !isClaimed(activePrefetch.dl)) {
+        activePrefetch.dl.abort.abort();
+        prefetching.delete(activePrefetch.key);
+    }
+
     const dl: Download = { received: 0, total: 0, chunks: [], done: false, type: "video/mp4", abort: new AbortController() };
     prefetching.set(key, dl);
-    runDownload(u, dl, () => { prefetching.delete(key); });
+    activePrefetch = { key, dl };
+    runDownload(u, dl, () => {
+        prefetching.delete(key);
+        if (activePrefetch?.dl === dl) activePrefetch = null;
+    });
+}
+
+export function cancelPrefetch(_: IpcMainInvokeEvent, url: string) {
+    const key = assertAllowed(url).toString();
+    const dl = prefetching.get(key);
+    if (!dl || dl.done || isClaimed(dl)) return;
+    dl.abort.abort();
+    prefetching.delete(key);
+    if (activePrefetch?.dl === dl) activePrefetch = null;
 }
 
 export function isCached(_: IpcMainInvokeEvent, url: string) {
     return existsSync(cachePath(assertAllowed(url).toString()));
 }
 
-export function startDownload(_: IpcMainInvokeEvent, url: string) {
+export async function startDownload(_: IpcMainInvokeEvent, url: string) {
     const u = assertAllowed(url);
     const key = u.toString();
     const id = String(++nextId);
 
-    const cached = cacheGet(key);
+    const cached = await cacheGet(key);
     if (cached) {
         downloads.set(id, { received: cached.byteLength, total: cached.byteLength, chunks: [cached], done: true, type: "video/mp4", abort: new AbortController() });
         return id;

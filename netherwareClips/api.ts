@@ -155,6 +155,10 @@ export function prefetchClip(clip: Clip) {
     Native.prefetch(mediaUrl(clip)).catch(() => { });
 }
 
+export function cancelPrefetchClip(clip: Clip) {
+    Native.cancelPrefetch(mediaUrl(clip)).catch(() => { });
+}
+
 export function warmEmbed(clip: Clip) {
     Native.post(`${baseUrl()}/library/warm/${encodeURIComponent(clip.id)}?force=1`).catch(() => { });
 }

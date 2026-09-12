@@ -9,7 +9,7 @@ import { copyWithToast, insertTextIntoChatInputBox, sendMessage } from "@utils/d
 import { Channel } from "@vencord/discord-types";
 import { React, Toasts, Tooltip, UploadHandler, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
-import { baseUrl, cachedLibrary, CancelledError, CancelToken, Clip, downloadClipFile, fetchLibrary, formatDuration, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
+import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatDuration, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
 import { showProgressToast } from "./progressToast";
 import { settings } from "./settings";
 
@@ -244,22 +244,29 @@ function HoverPreview({ clip }: { clip: Clip; }) {
 }
 
 const HOVER_DELAY = 180;
+const PREFETCH_DELAY = 900;
 
 function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: number; onPick(clip: Clip, action?: PickAction): void; onCopy(clip: Clip): void; }) {
     const [hover, setHover] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [broken, setBroken] = useState(false);
     const hoverTimer = useRef<number | undefined>(undefined);
+    const prefetchTimer = useRef<number | undefined>(undefined);
+    const prefetched = useRef(false);
 
     const enter = () => {
         window.clearTimeout(hoverTimer.current);
-        hoverTimer.current = window.setTimeout(() => { setHover(true); prefetchClip(clip); }, HOVER_DELAY);
+        window.clearTimeout(prefetchTimer.current);
+        hoverTimer.current = window.setTimeout(() => setHover(true), HOVER_DELAY);
+        prefetchTimer.current = window.setTimeout(() => { prefetched.current = true; prefetchClip(clip); }, PREFETCH_DELAY);
     };
     const leave = () => {
         window.clearTimeout(hoverTimer.current);
+        window.clearTimeout(prefetchTimer.current);
         setHover(false);
+        if (prefetched.current) { prefetched.current = false; cancelPrefetchClip(clip); }
     };
-    useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
+    useEffect(() => () => { window.clearTimeout(hoverTimer.current); window.clearTimeout(prefetchTimer.current); }, []);
 
     return (
         <div
@@ -267,7 +274,7 @@ function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: numb
             style={{ animationDelay: `${Math.min(index % 30, 18) * 22}ms` }}
             onMouseEnter={enter}
             onMouseLeave={leave}
-            onClick={() => onPick(clip)}
+            onClick={() => { prefetched.current = false; onPick(clip); }}
             onContextMenu={e => { e.preventDefault(); onCopy(clip); }}
             role="button"
             tabIndex={0}
