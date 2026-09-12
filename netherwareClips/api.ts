@@ -7,7 +7,7 @@
 import * as DataStore from "@api/DataStore";
 import { PluginNative } from "@utils/types";
 import { findByCodeLazy, findByPropsLazy } from "@webpack";
-import { ChannelStore, PendingReplyStore, UserStore } from "@webpack/common";
+import { ChannelStore, GuildStore, PendingReplyStore, UserStore } from "@webpack/common";
 
 import { settings } from "./settings";
 
@@ -208,11 +208,20 @@ export function pendingReplyTarget(channelId: string): { name: string; } | null 
     return { name: author.globalName || author.username || "user" };
 }
 
-export function maxUploadSize(): number {
+export function maxUploadSize(channelId?: string): number {
+    const FALLBACK = 10 * 1024 * 1024;
     try {
-        return PremiumUtils.getUserMaxFileSize(UserStore.getCurrentUser()) || 10 * 1024 * 1024;
+        const user = UserStore.getCurrentUser();
+        const guildId = channelId ? ChannelStore.getChannel(channelId)?.getGuildId?.() : null;
+        const guild = guildId ? GuildStore.getGuild(guildId) : null;
+        // getUserMaxFileSize returns the effective limit: the higher of the
+        // user's Nitro tier and the guild's boost tier. In a DM guild is null.
+        const size = guild
+            ? PremiumUtils.getUserMaxFileSize(user, guild)
+            : PremiumUtils.getUserMaxFileSize(user);
+        return Number(size) || FALLBACK;
     } catch {
-        return 10 * 1024 * 1024;
+        return FALLBACK;
     }
 }
 

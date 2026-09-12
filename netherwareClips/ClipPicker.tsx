@@ -621,7 +621,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
         }
 
         if (action === "sendfile") {
-            const tooBig = settings.store.overLimitAsLink && clip.size > maxUploadSize();
+            const tooBig = settings.store.overLimitAsLink && clip.size > maxUploadSize(channel.id);
             if (tooBig) {
                 finish();
                 const toast = showProgressToast(clip, { replyTo: pendingReplyTarget(channel.id)?.name });
