@@ -9,7 +9,7 @@ import { copyWithToast, insertTextIntoChatInputBox, sendMessage } from "@utils/d
 import { Channel } from "@vencord/discord-types";
 import { React, Toasts, Tooltip, UploadHandler, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
-import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
+import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, pendingReplyTarget, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
 import { showProgressToast } from "./progressToast";
 import { settings } from "./settings";
 
@@ -622,7 +622,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
 
         if (action === "sendfile") {
             finish();
-            const toast = showProgressToast(clip);
+            const toast = showProgressToast(clip, { replyTo: pendingReplyTarget(channel.id)?.name });
             const token = new CancelToken();
             toast.onCancel(() => token.cancel());
             let stage = "";

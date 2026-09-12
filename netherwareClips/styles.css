@@ -1091,6 +1091,35 @@
     text-overflow: ellipsis;
 }
 
+.vc-nwc-toast-reply {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    align-self: flex-start;
+    margin-top: 1px;
+    padding: 2px 7px 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--nwc-accent) 16%, transparent);
+    color: var(--nwc-accent);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: vc-nwc-rise 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.vc-nwc-toast-reply[hidden] {
+    display: none;
+}
+
+.vc-nwc-toast-done .vc-nwc-toast-reply {
+    background: color-mix(in srgb, var(--nwc-ok) 16%, transparent);
+    color: var(--nwc-ok);
+}
+
 .vc-nwc-toast-bar {
     position: relative;
     height: 5px;
