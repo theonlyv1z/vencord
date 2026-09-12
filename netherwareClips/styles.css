@@ -1443,15 +1443,16 @@
     background: rgb(0 0 0 / 8%);
 }
 
-/* Hide Discord's own upload cards while our progress card handles the send.
-   Matches any attachment/file card that is actively uploading (contains an
-   upload progress element); the finished video/image is never affected. */
-html.vc-nwc-hide-upload [class*="fileWrapper__"]:has([class*="progressContainer"]),
-html.vc-nwc-hide-upload [class*="file__"]:has([class*="progressContainer"]),
-html.vc-nwc-hide-upload [class*="attachment_"]:has([class*="mediaBarProgress"]),
-html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="mediaBarProgress"]),
+/* Hide Discord's own upload UI while our progress card handles the send:
+   the whole pending message row that is mid-upload (so no empty gap is left),
+   plus the composer attachment preview. The finished video has no upload
+   progress element, so it is never hidden. */
+html.vc-nwc-hide-upload li:has([class*="progressContainer"]),
+html.vc-nwc-hide-upload li:has([class*="mediaBarProgress"]),
+html.vc-nwc-hide-upload [class*="messageListItem"]:has([class*="progressContainer"]),
+html.vc-nwc-hide-upload [class*="messageListItem"]:has([class*="mediaBarProgress"]),
 html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="progressContainer"]),
-html.vc-nwc-hide-upload [class*="uploadCard_"],
-html.vc-nwc-hide-upload [class*="attachedFileCardUploading_"] {
+html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="mediaBarProgress"]),
+html.vc-nwc-hide-upload [class*="uploadCard_"] {
     display: none !important;
 }
