@@ -21,6 +21,23 @@ let lastQuery = "";
 let lastShown = 0;
 let lastScroll = 0;
 
+type SortKey = "newest" | "oldest" | "longest" | "shortest" | "creator";
+type Orientation = "all" | "portrait" | "landscape";
+type Length = "all" | "short" | "medium" | "long";
+interface Filters { sort: SortKey; orientation: Orientation; length: Length; }
+const DEFAULT_FILTERS: Filters = { sort: "newest", orientation: "all", length: "all" };
+let lastFilters: Filters = { ...DEFAULT_FILTERS };
+
+const SORTS: [SortKey, string][] = [["newest", "Newest"], ["oldest", "Oldest"], ["longest", "Longest"], ["shortest", "Shortest"], ["creator", "Creator A–Z"]];
+const ORIENTATIONS: [Orientation, string][] = [["all", "Any"], ["portrait", "Portrait"], ["landscape", "Landscape"]];
+const LENGTHS: [Length, string][] = [["all", "Any"], ["short", "< 15s"], ["medium", "15–30s"], ["long", "> 30s"]];
+
+function lengthBucket(sec: number): Length {
+    if (sec < 15) return "short";
+    if (sec <= 30) return "medium";
+    return "long";
+}
+
 type PickAction = "insert" | "send" | "upload" | "sendfile";
 
 interface PickerProps {
@@ -58,6 +75,25 @@ const ExternalIcon = () => (
         <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
 );
+
+const FilterIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 5h16l-6.5 8v5l-3 2v-7L4 5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+);
+
+function FilterRow<T extends string>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange(v: T): void; }) {
+    return (
+        <div className={cl("filter-row")}>
+            <span className={cl("filter-label")}>{label}</span>
+            <div className={cl("filter-chips")}>
+                {options.map(([v, text]) => (
+                    <button key={v} className={cl("filter-chip", { active: value === v })} onClick={() => onChange(v)}>{text}</button>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 const PinIcon = () => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -368,6 +404,13 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
     const [library, setLibrary] = useState<Library | null>(cachedLibrary);
     const [error, setError] = useState<string | null>(null);
     const [query, setQuery] = useState(lastQuery);
+    const [filters, setFiltersState] = useState<Filters>(lastFilters);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const setFilters = (patch: Partial<Filters>) => {
+        lastFilters = { ...lastFilters, ...patch };
+        setFiltersState(lastFilters);
+    };
+    const filtersActive = filters.sort !== "newest" || filters.orientation !== "all" || filters.length !== "all";
     const [genre, setGenreState] = useState<string>(lastGenre);
     const setGenre = useCallback((g: string) => { lastGenre = g; setGenreState(g); }, []);
     const deferredQuery = React.useDeferredValue(query);
@@ -398,7 +441,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
         }
         setShown(settings.store.pageSize);
         scrollRef.current?.scrollTo({ top: 0 });
-    }, [query, genre]);
+    }, [query, genre, filters]);
 
     React.useLayoutEffect(() => {
         const el = scrollRef.current;
@@ -424,16 +467,27 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
 
     const sorted = useMemo(() => {
         if (!library) return [];
-        if (!settings.store.pinnedFirst) return library.clips;
-        return [...library.clips].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.addedAt - a.addedAt);
-    }, [library]);
+        const pin = settings.store.pinnedFirst ? (a: Clip, b: Clip) => Number(b.pinned) - Number(a.pinned) : () => 0;
+        const by: Record<SortKey, (a: Clip, b: Clip) => number> = {
+            newest: (a, b) => b.addedAt - a.addedAt,
+            oldest: (a, b) => a.addedAt - b.addedAt,
+            longest: (a, b) => (b.durationSec || 0) - (a.durationSec || 0),
+            shortest: (a, b) => (a.durationSec || 0) - (b.durationSec || 0),
+            creator: (a, b) => (a.author || "").localeCompare(b.author || "") || b.addedAt - a.addedAt
+        };
+        const cmp = by[filters.sort];
+        return [...library.clips].sort((a, b) => pin(a, b) || cmp(a, b));
+    }, [library, filters.sort]);
 
     const filtered = useMemo(() => {
         const terms = deferredQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
         return sorted.filter(c =>
-            (genre === "all" || (genre === "pinned" ? c.pinned : c.genre === genre)) && matches(c, terms)
+            (genre === "all" || (genre === "pinned" ? c.pinned : c.genre === genre))
+            && (filters.orientation === "all" || (filters.orientation === "portrait" ? c.height >= c.width : c.width > c.height))
+            && (filters.length === "all" || lengthBucket(c.durationSec || 0) === filters.length)
+            && matches(c, terms)
         );
-    }, [sorted, deferredQuery, genre]);
+    }, [sorted, deferredQuery, genre, filters.orientation, filters.length]);
 
     const pinnedCount = useMemo(() => library?.clips.reduce((n, c) => n + Number(c.pinned), 0) ?? 0, [library]);
 
@@ -568,6 +622,26 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     <div className={cl("section")}>
                         <span className={cl("section-title")}>{query ? `Results for “${query}”` : activeLabel}</span>
                         <span className={cl("section-count")}>{filtered.length}</span>
+                        <button
+                            className={cl("filter-btn", { active: filtersActive, open: filtersOpen })}
+                            onClick={() => setFiltersOpen(v => !v)}
+                            aria-expanded={filtersOpen}
+                        >
+                            <FilterIcon />
+                            <span>Filter</span>
+                            {filtersActive && <span className={cl("filter-dot")} />}
+                        </button>
+                    </div>
+                )}
+
+                {library && filtersOpen && (
+                    <div className={cl("filters")}>
+                        <FilterRow label="Sort" options={SORTS} value={filters.sort} onChange={sort => setFilters({ sort })} />
+                        <FilterRow label="Shape" options={ORIENTATIONS} value={filters.orientation} onChange={orientation => setFilters({ orientation })} />
+                        <FilterRow label="Length" options={LENGTHS} value={filters.length} onChange={length => setFilters({ length })} />
+                        {filtersActive && (
+                            <button className={cl("filter-reset")} onClick={() => setFilters({ ...DEFAULT_FILTERS })}>Reset</button>
+                        )}
                     </div>
                 )}
 

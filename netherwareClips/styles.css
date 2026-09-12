@@ -379,6 +379,114 @@
     color: var(--text-muted);
 }
 
+.vc-nwc-filter-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle, rgb(255 255 255 / 8%));
+    background: var(--background-base-lower, var(--background-secondary-alt));
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.vc-nwc-filter-btn:hover,
+.vc-nwc-filter-btn.vc-nwc-open {
+    color: var(--text-default, var(--text-normal));
+    background: var(--background-modifier-hover);
+}
+
+.vc-nwc-filter-btn.vc-nwc-active {
+    color: var(--nwc-accent);
+    border-color: var(--nwc-accent);
+}
+
+.vc-nwc-filter-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--nwc-accent);
+}
+
+.vc-nwc-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    margin: 0 2px 10px;
+    border-radius: 12px;
+    background: var(--background-base-lower, var(--background-secondary-alt));
+    border: 1px solid var(--border-subtle, rgb(255 255 255 / 6%));
+    animation: vc-nwc-rise 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.vc-nwc-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.vc-nwc-filter-label {
+    width: 48px;
+    flex: none;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.vc-nwc-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.vc-nwc-filter-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: rgb(255 255 255 / 5%);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.vc-nwc-filter-chip:hover {
+    color: var(--text-default, var(--text-normal));
+    background: rgb(255 255 255 / 10%);
+}
+
+.vc-nwc-filter-chip.vc-nwc-active {
+    background: var(--nwc-accent);
+    color: #fff;
+}
+
+.vc-nwc-filter-reset {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-link);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.vc-nwc-filter-reset:hover {
+    text-decoration: underline;
+}
+
 .vc-nwc-state {
     display: flex;
     flex-direction: column;
