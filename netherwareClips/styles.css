@@ -1149,18 +1149,77 @@
     gap: 0;
 }
 
-.vc-nwc-toast-done .vc-nwc-toast-status::before {
-    content: "✓";
+@keyframes vc-nwc-toast-glow {
+    0% { box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px rgb(46 194 126 / 0%), 0 0 0 0 rgb(46 194 126 / 0%); }
+    30% { box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px rgb(46 194 126 / 70%), 0 0 28px 4px rgb(46 194 126 / 35%); }
+    100% { box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px rgb(46 194 126 / 25%), 0 0 0 0 rgb(46 194 126 / 0%); }
+}
+
+@keyframes vc-nwc-toast-sweep {
+    from { transform: translateX(-120%); }
+    to { transform: translateX(260%); }
+}
+
+@keyframes vc-nwc-toast-ring {
+    0% { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes vc-nwc-toast-draw {
+    from { stroke-dashoffset: 24; }
+    to { stroke-dashoffset: 0; }
+}
+
+.vc-nwc-toast-done {
+    animation: vc-nwc-toast-glow 1.4s ease-out both;
+}
+
+.vc-nwc-toast-done .vc-nwc-toast-fill {
+    position: relative;
+    overflow: hidden;
+    transition: width 0.25s ease-out, background 0.3s;
+}
+
+.vc-nwc-toast-done .vc-nwc-toast-fill::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 70%), transparent);
+    animation: vc-nwc-toast-sweep 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+}
+
+.vc-nwc-toast-done .vc-nwc-toast-thumb {
+    box-shadow: 0 0 0 2px var(--nwc-ok);
+    transition: box-shadow 0.3s;
+}
+
+.vc-nwc-toast-check {
+    position: relative;
     display: grid;
     place-items: center;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     background: var(--nwc-ok);
     color: #fff;
-    font-size: 14px;
-    font-weight: 800;
-    animation: vc-nwc-toast-check 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    box-shadow: 0 4px 14px rgb(46 194 126 / 50%);
+    animation: vc-nwc-toast-check 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.vc-nwc-toast-check::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--nwc-ok);
+    animation: vc-nwc-toast-ring 0.8s ease-out 0.15s both;
+}
+
+.vc-nwc-toast-check path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: vc-nwc-toast-draw 0.35s ease-out 0.2s both;
 }
 
 .vc-nwc-toast-end {

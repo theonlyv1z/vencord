@@ -69,19 +69,18 @@ export function showProgressToast(clip: Clip): ProgressToast {
     container().appendChild(root);
     requestAnimationFrame(() => root.classList.add("vc-nwc-toast-in"));
 
-    let closed = false;
+    let closeTimer: number | undefined;
     const close = (delay: number) => {
-        if (closed) return;
-        closed = true;
-        setTimeout(() => {
+        window.clearTimeout(closeTimer);
+        closeTimer = window.setTimeout(() => {
             root.classList.remove("vc-nwc-toast-in");
             root.classList.add("vc-nwc-toast-out");
-            setTimeout(() => root.remove(), 320);
+            window.setTimeout(() => root.remove(), 320);
         }, delay);
     };
 
     const settle = (cls: string, label: string, delay: number) => {
-        root.classList.remove("vc-nwc-toast-indeterminate");
+        root.classList.remove("vc-nwc-toast-indeterminate", "vc-nwc-toast-done", "vc-nwc-toast-error", "vc-nwc-toast-cancelled");
         root.classList.add(cls);
         title.textContent = label;
         pct.textContent = "";
@@ -111,9 +110,9 @@ export function showProgressToast(clip: Clip): ProgressToast {
             status.textContent = `${formatSize(received)} / ${formatSize(total)}`;
         },
         success(label = "Sent") {
-            settle("vc-nwc-toast-done", label, 1600);
+            settle("vc-nwc-toast-done", label, 1800);
             fill.style.width = "100%";
-            status.textContent = "";
+            status.innerHTML = '<span class="vc-nwc-toast-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
         },
         fail(label) {
             settle("vc-nwc-toast-error", "Failed", 4000);

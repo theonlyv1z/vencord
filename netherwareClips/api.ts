@@ -201,7 +201,7 @@ export async function downloadClipFile(clip: Clip, onProgress?: ProgressFn, toke
     return new File([res.bytes as unknown as BlobPart], clip.file, { type: res.type || "video/mp4" });
 }
 
-export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken) {
+export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
     const file = await downloadClipFile(clip, onDownload, token);
     token?.throwIfCancelled();
 
@@ -235,6 +235,7 @@ export async function sendClipFile(clip: Clip, channelId: string, onDownload?: P
             if (token?.cancelled) return;
             posted = true;
             onUpload?.(size, size);
+            onPosted?.();
             RestAPI.post({
                 url: Constants.Endpoints.MESSAGES(channelId),
                 body: {

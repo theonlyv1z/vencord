@@ -9,7 +9,7 @@ import { copyWithToast, insertTextIntoChatInputBox, sendMessage } from "@utils/d
 import { Channel } from "@vencord/discord-types";
 import { React, Toasts, Tooltip, UploadHandler, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
-import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatDuration, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
+import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
 import { showProgressToast } from "./progressToast";
 import { settings } from "./settings";
 
@@ -296,7 +296,6 @@ function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: numb
                 {hover && settings.store.hoverPreview && <HoverPreview clip={clip} />}
                 <div className={cl("top")}>
                     {clip.pinned && <span className={cl("badge", "badge-pin")}>Pinned</span>}
-                    {clip.durationSec > 0 && <span className={cl("badge")}>{formatDuration(clip.durationSec)}</span>}
                 </div>
                 <div className={cl("actions")} onClick={e => e.stopPropagation()}>
                     <ActionButton label="Insert link" icon={<LinkIcon />} primary={settings.store.clickAction === "insert"} onClick={() => onPick(clip, "insert")} />
@@ -623,9 +622,9 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     channel.id,
                     (r, t) => { setStage("Fetching from netherware.xyz"); toast.progress(r, t); },
                     (r, t) => { setStage("Uploading to Discord"); toast.progress(r, t); },
-                    token
+                    token,
+                    () => toast.success("Sent")
                 );
-                toast.success("Sent");
             } catch (e) {
                 if (e instanceof CancelledError || token.cancelled) toast.cancelled();
                 else toast.fail(String((e as Error)?.message ?? e));
