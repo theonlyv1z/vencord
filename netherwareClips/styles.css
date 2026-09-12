@@ -1444,15 +1444,16 @@
 }
 
 /* Hide Discord's own upload UI while our progress card handles the send:
-   the whole pending message row that is mid-upload (so no empty gap is left),
-   plus the composer attachment preview. The finished video has no upload
-   progress element, so it is never hidden. */
+   the whole pending message row that is mid-upload (no empty gap), and the
+   composer attachment preview (staged thumbnail above the text box).
+   Active only during our send, so normal composing is unaffected. */
 html.vc-nwc-hide-upload li:has([class*="progressContainer"]),
 html.vc-nwc-hide-upload li:has([class*="mediaBarProgress"]),
 html.vc-nwc-hide-upload [class*="messageListItem"]:has([class*="progressContainer"]),
 html.vc-nwc-hide-upload [class*="messageListItem"]:has([class*="mediaBarProgress"]),
-html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="progressContainer"]),
-html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="mediaBarProgress"]),
+html.vc-nwc-hide-upload [class*="attachmentsWrapper_"],
+html.vc-nwc-hide-upload [class*="attachmentContainer_"],
+html.vc-nwc-hide-upload [class*="channelAttachmentArea_"],
 html.vc-nwc-hide-upload [class*="uploadCard_"] {
     display: none !important;
 }
