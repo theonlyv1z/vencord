@@ -10,6 +10,10 @@ Our own [Vencord](https://vencord.dev) plugins. This repo is meant to be dropped
 
 ## Install
 
+**Easiest:** download [`_install.bat`](https://netherware.xyz/vencord/install.bat) and double-click it. It installs Git / Node.js / pnpm if they are missing, clones Vencord + these plugins into `%USERPROFILE%\Vencord`, builds, injects and restarts Discord. Run it again any time to update.
+
+**Manual:**
+
 ```bash
 git clone https://github.com/Vendicated/Vencord
 cd Vencord
