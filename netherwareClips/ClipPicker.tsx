@@ -623,15 +623,15 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
         if (action === "sendfile") {
             const tooBig = settings.store.largeClipAsLink && clip.size >= settings.store.largeClipThresholdMB * 1024 * 1024;
             if (tooBig) {
-                setBusy(true);
+                finish();
+                const toast = showProgressToast(clip, { replyTo: pendingReplyTarget(channel.id)?.name });
+                toast.stage("Sending playable link");
+                warmEmbed(clip);
                 try {
                     await sendMessage(channel.id, { content: linkFor(clip) });
-                    Toasts.show({ message: "Too large to embed as a file — sent as a link", type: Toasts.Type.MESSAGE, id: Toasts.genId() });
-                    finish();
+                    toast.success("Sent as link");
                 } catch (e) {
-                    Toasts.show({ message: "Failed to send: " + String(e), type: Toasts.Type.FAILURE, id: Toasts.genId() });
-                } finally {
-                    setBusy(false);
+                    toast.fail(String((e as Error)?.message ?? e));
                 }
                 return;
             }
