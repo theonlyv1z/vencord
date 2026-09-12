@@ -14,8 +14,12 @@ const CONTAINER_ID = "vc-nwc-toasts";
 // isn't found. A MutationObserver re-inserts the container if React re-renders
 // the bar while a card is showing.
 function mountInfo(): { parent: HTMLElement; before: Element | null; } | null {
+    // Above the input row (full width), inside channelTextArea but before the
+    // input's scrollableContainer. Do NOT mount inside scrollableContainer — it
+    // is React-managed and crashes Discord.
     const ta = document.querySelector<HTMLElement>('[class*="channelTextArea_"]');
-    if (ta) return { parent: ta, before: ta.querySelector('[class*="scrollableContainer_"]') };
+    const sc = ta?.querySelector('[class*="scrollableContainer_"]') ?? null;
+    if (ta && sc) return { parent: ta, before: sc };
     const bar = document.querySelector<HTMLElement>('[class*="channelBottomBarArea_"]');
     if (bar) return { parent: bar, before: bar.firstElementChild };
     return null;
@@ -122,7 +126,7 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
                 root.remove();
                 const c = document.getElementById(CONTAINER_ID);
                 if (c && c.childElementCount === 0) c.remove();
-            }, 320);
+            }, 340);
         }, delay);
     };
 
