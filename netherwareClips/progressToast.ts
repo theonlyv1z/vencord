@@ -40,8 +40,12 @@ export function showProgressToast(clip: Clip): ProgressToast {
             <div class="vc-nwc-toast-sub"></div>
             <div class="vc-nwc-toast-bar"><div class="vc-nwc-toast-fill"></div></div>
         </div>
-        <div class="vc-nwc-toast-status"></div>
-        <button class="vc-nwc-toast-x" type="button" aria-label="Cancel" title="Cancel">×</button>
+        <div class="vc-nwc-toast-end">
+            <div class="vc-nwc-toast-status"></div>
+            <button class="vc-nwc-toast-x" type="button" aria-label="Cancel" title="Cancel">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            </button>
+        </div>
     `;
 
     const title = root.querySelector<HTMLElement>(".vc-nwc-toast-title")!;

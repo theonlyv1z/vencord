@@ -1112,6 +1112,12 @@
     min-width: 0;
 }
 
+.vc-nwc-toast-done .vc-nwc-toast-end,
+.vc-nwc-toast-error .vc-nwc-toast-end,
+.vc-nwc-toast-cancelled .vc-nwc-toast-end {
+    gap: 0;
+}
+
 .vc-nwc-toast-done .vc-nwc-toast-status::before {
     content: "✓";
     display: grid;
@@ -1126,38 +1132,45 @@
     animation: vc-nwc-toast-check 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.vc-nwc-toast {
-    position: relative;
+.vc-nwc-toast-end {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .vc-nwc-toast-x {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 24px;
-    height: 24px;
+    display: grid;
+    place-items: center;
+    width: 0;
+    height: 34px;
+    margin-left: -10px;
     border-radius: 50%;
-    border: 1px solid rgb(255 255 255 / 12%);
-    background: #1e1f22;
+    border: none;
+    background: var(--nwc-bad);
     color: #fff;
-    font-size: 16px;
-    line-height: 1;
-    padding: 0 0 2px;
+    padding: 0;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 45%);
+    box-shadow: 0 4px 14px rgb(237 66 69 / 45%);
     opacity: 0;
-    transform: scale(0.7);
-    transition: opacity 0.15s, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.12s;
+    overflow: hidden;
+    transform: scale(0.6) rotate(-90deg);
+    transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), margin 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.15s, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.12s;
 }
 
 .vc-nwc-toast:hover .vc-nwc-toast-x {
+    width: 34px;
+    margin-left: 0;
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) rotate(0deg);
 }
 
 .vc-nwc-toast-x:hover {
-    background: var(--nwc-bad);
-    border-color: transparent;
+    background: #ff5c5f;
+    transform: scale(1.1) !important;
+}
+
+.vc-nwc-toast-x:active {
+    transform: scale(0.94) !important;
 }
 
 .vc-nwc-toast-cancelled .vc-nwc-toast-title {
