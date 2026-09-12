@@ -253,6 +253,18 @@ const HIDE_SELECTORS = [
 ];
 const HIDE_CSS = HIDE_SELECTORS.join(",") + "{display:none !important;}";
 
+function stickScrollerToBottom() {
+    // Hiding the optimistic uploading message collapses its height, but Discord's
+    // scroller doesn't re-stick to the bottom, leaving a blank gap. Nudge it down.
+    const scroller = document.querySelector<HTMLElement>('[class*="messagesWrapper_"] [class*="scroller_"]');
+    if (!scroller) return;
+    const pin = () => { scroller.scrollTop = scroller.scrollHeight; };
+    pin();
+    requestAnimationFrame(pin);
+    setTimeout(pin, 120);
+    setTimeout(pin, 300);
+}
+
 function setUploadHidden(on: boolean) {
     hideUploadRefs = Math.max(0, hideUploadRefs + (on ? 1 : -1));
     const existing = document.getElementById(HIDE_STYLE_ID);
@@ -263,6 +275,7 @@ function setUploadHidden(on: boolean) {
             el.textContent = HIDE_CSS;
             document.head.appendChild(el);
         }
+        stickScrollerToBottom();
     } else {
         existing?.remove();
     }
