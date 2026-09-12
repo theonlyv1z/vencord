@@ -254,7 +254,9 @@ export async function sendClipFile(clip: Clip, channelId: string, onDownload?: P
                     attachments: [{
                         id: "0",
                         filename: upload.filename,
-                        uploaded_filename: upload.uploadedFilename
+                        uploaded_filename: upload.uploadedFilename,
+                        ...(clip.width && clip.height ? { width: clip.width, height: clip.height } : {}),
+                        ...(clip.durationSec ? { duration_secs: clip.durationSec } : {})
                     }],
                     message_reference: reply ? MessageActions.getSendMessageOptionsForReply(reply)?.messageReference : null
                 }
