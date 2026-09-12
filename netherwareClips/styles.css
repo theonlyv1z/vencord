@@ -1444,10 +1444,13 @@
 }
 
 /* Hide Discord's own upload cards while our progress card handles the send.
-   Any attachment/card that currently contains an upload progress bar is hidden;
-   the finished video (no progress bar) is never affected. */
-html.vc-nwc-hide-upload [class*="attachment_"]:has([class*="progressBar_"]),
-html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="progressBar_"]),
+   Matches any attachment/file card that is actively uploading (contains an
+   upload progress element); the finished video/image is never affected. */
+html.vc-nwc-hide-upload [class*="fileWrapper__"]:has([class*="progressContainer"]),
+html.vc-nwc-hide-upload [class*="file__"]:has([class*="progressContainer"]),
+html.vc-nwc-hide-upload [class*="attachment_"]:has([class*="mediaBarProgress"]),
+html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="mediaBarProgress"]),
+html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="progressContainer"]),
 html.vc-nwc-hide-upload [class*="uploadCard_"],
 html.vc-nwc-hide-upload [class*="attachedFileCardUploading_"] {
     display: none !important;
