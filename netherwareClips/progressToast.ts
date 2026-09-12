@@ -8,12 +8,48 @@ import { Clip, formatSize, thumbUrl } from "./api";
 
 const CONTAINER_ID = "vc-nwc-toasts";
 
+// Mount our cards in-flow just above the message composer — the same slot
+// Discord uses for its own upload preview — so they push the message list up
+// instead of floating over it. Falls back to a fixed overlay if the composer
+// isn't found. A MutationObserver re-inserts the container if React re-renders
+// the bar while a card is showing.
+function mountInfo(): { parent: HTMLElement; before: Element | null; } | null {
+    const ta = document.querySelector<HTMLElement>('[class*="channelTextArea_"]');
+    if (ta) return { parent: ta, before: ta.querySelector('[class*="scrollableContainer_"]') };
+    const bar = document.querySelector<HTMLElement>('[class*="channelBottomBarArea_"]');
+    if (bar) return { parent: bar, before: bar.firstElementChild };
+    return null;
+}
+
+let reinsertObserver: MutationObserver | null = null;
+
+function ensureMounted(el: HTMLElement) {
+    const info = mountInfo();
+    if (info) {
+        el.classList.remove("vc-nwc-toasts-floating");
+        if (el.parentElement !== info.parent || el.nextElementSibling !== info.before) {
+            info.parent.insertBefore(el, info.before);
+        }
+    } else if (!el.parentElement) {
+        el.classList.add("vc-nwc-toasts-floating");
+        document.body.appendChild(el);
+    }
+}
+
 function container() {
     let el = document.getElementById(CONTAINER_ID);
     if (!el) {
         el = document.createElement("div");
         el.id = CONTAINER_ID;
-        document.body.appendChild(el);
+    }
+    ensureMounted(el);
+
+    if (!reinsertObserver) {
+        reinsertObserver = new MutationObserver(() => {
+            const c = document.getElementById(CONTAINER_ID);
+            if (c && c.childElementCount > 0) ensureMounted(c);
+        });
+        reinsertObserver.observe(document.body, { childList: true, subtree: true });
     }
     return el;
 }
