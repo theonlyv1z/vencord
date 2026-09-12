@@ -229,6 +229,10 @@ export function maxUploadSize(channelId?: string): number {
 let hideUploadRefs = 0;
 const HIDE_STYLE_ID = "vc-nwc-hide-upload-style";
 const HIDE_SELECTORS = [
+    // Discord's bottom spacer in the message list — normally the padding between
+    // the last message and the composer. With our card in the composer it reads
+    // as an empty gap above the card, so collapse it while we're showing.
+    '[class*="scrollerSpacer_"]',
     // the pending message row while it is still sending (covers both the
     // upload and the brief window before the server confirms it), so no
     // timestamp/avatar gutter peeks beside our card. Revealed as the finished
