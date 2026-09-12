@@ -251,7 +251,7 @@ function HoverPreview({ clip }: { clip: Clip; }) {
 }
 
 const HOVER_DELAY = 180;
-const PREFETCH_DELAY = 900;
+const PREFETCH_DELAY = 350;
 const TOP_THRESHOLD = 420;
 
 function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: number; onPick(clip: Clip, action?: PickAction): void; onCopy(clip: Clip): void; }) {
@@ -641,13 +641,17 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
             toast.onCancel(() => token.cancel());
             let stage = "";
             const setStage = (label: string) => { if (stage !== label) { stage = label; toast.stage(label); } };
+            // Only surface a "Fetching" phase if the download actually takes a
+            // moment — a prefetched/cached clip skips straight to uploading.
+            let uploading = false;
+            const fetchTimer = window.setTimeout(() => { if (!uploading) setStage("Fetching clip"); }, 250);
             try {
                 await sendClipFile(
                     clip,
                     channel.id,
                     draftType,
-                    (r, t) => { setStage("Fetching clip"); toast.progress(r, t); },
-                    (r, t) => { setStage("Uploading to Discord"); toast.progress(r, t); },
+                    (r, t) => { if (stage === "Fetching clip") toast.progress(r, t); },
+                    (r, t) => { uploading = true; window.clearTimeout(fetchTimer); setStage("Uploading to Discord"); toast.progress(r, t); },
                     token,
                     () => toast.success("Sent")
                 );

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Clip, formatSize, thumbUrl } from "./api";
+import { Clip, formatSize, setUploadHidden, thumbUrl } from "./api";
 
 const CONTAINER_ID = "vc-nwc-toasts";
 
@@ -113,8 +113,15 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
     pct.textContent = "";
     root.classList.add("vc-nwc-toast-indeterminate");
 
+    // Collapse Discord's own upload UI (spacer, composer preview, in-chat
+    // uploading row) for exactly as long as this card is on screen — one
+    // coordinated layout shift instead of several.
+    setUploadHidden(true);
     container().appendChild(root);
     requestAnimationFrame(() => root.classList.add("vc-nwc-toast-in"));
+
+    let released = false;
+    const release = () => { if (!released) { released = true; setUploadHidden(false); } };
 
     let closeTimer: number | undefined;
     const close = (delay: number) => {
@@ -126,6 +133,7 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
                 root.remove();
                 const c = document.getElementById(CONTAINER_ID);
                 if (c && c.childElementCount === 0) c.remove();
+                release();
             }, 340);
         }, delay);
     };
