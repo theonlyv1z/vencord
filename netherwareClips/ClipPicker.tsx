@@ -598,7 +598,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
     const activeLabel = genre === "all" ? "All" : genre === "pinned" ? "Pinned" : genres.find(g => g.id === genre)?.label ?? genre;
 
     return (
-        <div className={cl("popout", { busy })} onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}>
+        <div className={cl("popout", { busy, "drawer-open": filtersOpen })} onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}>
             <div className={cl("header")}>
                 <div className={cl("search-wrap")}>
                     <SearchIcon />
@@ -621,7 +621,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                 </button>
             </div>
 
-            <div className={cl("body", { "drawer-open": filtersOpen })}>
+            <div className={cl("body")}>
             <div className={cl("scroll")} ref={scrollRef}>
                 {!library && !error && <Skeleton />}
 
@@ -681,6 +681,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                 )}
                 {shown < filtered.length && <div ref={sentinelRef} className={cl("sentinel")}><span className={cl("spinner")} /></div>}
             </div>
+            </div>
 
             <aside className={cl("fside")} aria-hidden={!filtersOpen}>
                 <div className={cl("fside-head")}>
@@ -708,7 +709,6 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     <button className={cl("fclear")} disabled={!filtersActive} onClick={() => setFilters({ ...DEFAULT_FILTERS })}>Reset all filters</button>
                 </div>
             </aside>
-            </div>
         </div>
     );
 }
