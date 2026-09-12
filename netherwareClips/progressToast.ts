@@ -27,7 +27,7 @@ export interface ProgressToast {
     onCancel(fn: () => void): void;
 }
 
-export function showProgressToast(clip: Clip): ProgressToast {
+export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; } = {}): ProgressToast {
     const root = document.createElement("div");
     root.className = "vc-nwc-toast";
     root.innerHTML = `
@@ -38,6 +38,7 @@ export function showProgressToast(clip: Clip): ProgressToast {
                 <span class="vc-nwc-toast-pct"></span>
             </div>
             <div class="vc-nwc-toast-sub"></div>
+            <div class="vc-nwc-toast-reply" hidden><svg viewBox="0 0 24 24" width="12" height="12" fill="none" aria-hidden="true"><path d="M9 7 4 12l5 5M4 12h9a6 6 0 0 1 6 6v1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></div>
             <div class="vc-nwc-toast-bar"><div class="vc-nwc-toast-fill"></div></div>
         </div>
         <div class="vc-nwc-toast-end">
@@ -51,6 +52,11 @@ export function showProgressToast(clip: Clip): ProgressToast {
     const title = root.querySelector<HTMLElement>(".vc-nwc-toast-title")!;
     const pct = root.querySelector<HTMLElement>(".vc-nwc-toast-pct")!;
     const sub = root.querySelector<HTMLElement>(".vc-nwc-toast-sub")!;
+    const reply = root.querySelector<HTMLElement>(".vc-nwc-toast-reply")!;
+    if (opts.replyTo) {
+        reply.querySelector("span")!.textContent = `Replying to ${opts.replyTo}`;
+        reply.hidden = false;
+    }
     const fill = root.querySelector<HTMLElement>(".vc-nwc-toast-fill")!;
     const status = root.querySelector<HTMLElement>(".vc-nwc-toast-status")!;
     const xBtn = root.querySelector<HTMLButtonElement>(".vc-nwc-toast-x")!;

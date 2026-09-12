@@ -201,12 +201,19 @@ export async function downloadClipFile(clip: Clip, onProgress?: ProgressFn, toke
     return new File([res.bytes as unknown as BlobPart], clip.file, { type: res.type || "video/mp4" });
 }
 
-export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
-    const file = await downloadClipFile(clip, onDownload, token);
-    token?.throwIfCancelled();
+export function pendingReplyTarget(channelId: string): { name: string; } | null {
+    const reply = PendingReplyStore.getPendingReply(channelId);
+    const author = reply?.message?.author;
+    if (!author) return null;
+    return { name: author.globalName || author.username || "user" };
+}
 
+export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
     const reply = PendingReplyStore.getPendingReply(channelId);
     if (reply) FluxDispatcher.dispatch({ type: "DELETE_PENDING_REPLY", channelId });
+
+    const file = await downloadClipFile(clip, onDownload, token);
+    token?.throwIfCancelled();
 
     const upload = new CloudUpload({
         file,
