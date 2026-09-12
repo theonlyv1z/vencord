@@ -1,0 +1,103 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { Clip, formatSize, thumbUrl } from "./api";
+
+const CONTAINER_ID = "vc-nwc-toasts";
+
+function container() {
+    let el = document.getElementById(CONTAINER_ID);
+    if (!el) {
+        el = document.createElement("div");
+        el.id = CONTAINER_ID;
+        document.body.appendChild(el);
+    }
+    return el;
+}
+
+export interface ProgressToast {
+    stage(label: string): void;
+    progress(received: number, total: number): void;
+    success(label?: string): void;
+    fail(label: string): void;
+}
+
+export function showProgressToast(clip: Clip): ProgressToast {
+    const root = document.createElement("div");
+    root.className = "vc-nwc-toast";
+    root.innerHTML = `
+        <div class="vc-nwc-toast-thumb"><img alt="" src="${thumbUrl(clip)}"><div class="vc-nwc-toast-ring"></div></div>
+        <div class="vc-nwc-toast-body">
+            <div class="vc-nwc-toast-row">
+                <span class="vc-nwc-toast-title"></span>
+                <span class="vc-nwc-toast-pct"></span>
+            </div>
+            <div class="vc-nwc-toast-sub"></div>
+            <div class="vc-nwc-toast-bar"><div class="vc-nwc-toast-fill"></div></div>
+        </div>
+        <div class="vc-nwc-toast-status"></div>
+    `;
+
+    const title = root.querySelector<HTMLElement>(".vc-nwc-toast-title")!;
+    const pct = root.querySelector<HTMLElement>(".vc-nwc-toast-pct")!;
+    const sub = root.querySelector<HTMLElement>(".vc-nwc-toast-sub")!;
+    const fill = root.querySelector<HTMLElement>(".vc-nwc-toast-fill")!;
+    const status = root.querySelector<HTMLElement>(".vc-nwc-toast-status")!;
+
+    const caption = (clip.caption || clip.file).replace(/#\S+/g, "").replace(/\s+/g, " ").trim() || clip.file;
+    sub.textContent = `@${clip.author || "unknown"} · ${caption}`;
+    title.textContent = "Preparing";
+    pct.textContent = "";
+    root.classList.add("vc-nwc-toast-indeterminate");
+
+    container().appendChild(root);
+    requestAnimationFrame(() => root.classList.add("vc-nwc-toast-in"));
+
+    let closed = false;
+    const close = (delay: number) => {
+        if (closed) return;
+        closed = true;
+        setTimeout(() => {
+            root.classList.remove("vc-nwc-toast-in");
+            root.classList.add("vc-nwc-toast-out");
+            setTimeout(() => root.remove(), 320);
+        }, delay);
+    };
+
+    return {
+        stage(label) {
+            title.textContent = label;
+            fill.style.width = "0%";
+            pct.textContent = "";
+            root.classList.add("vc-nwc-toast-indeterminate");
+        },
+        progress(received, total) {
+            if (!total) return;
+            root.classList.remove("vc-nwc-toast-indeterminate");
+            const ratio = Math.max(0, Math.min(1, received / total));
+            fill.style.width = `${(ratio * 100).toFixed(1)}%`;
+            pct.textContent = `${Math.round(ratio * 100)}%`;
+            status.textContent = `${formatSize(received)} / ${formatSize(total)}`;
+        },
+        success(label = "Sent") {
+            root.classList.remove("vc-nwc-toast-indeterminate");
+            root.classList.add("vc-nwc-toast-done");
+            title.textContent = label;
+            pct.textContent = "";
+            fill.style.width = "100%";
+            status.textContent = "";
+            close(1600);
+        },
+        fail(label) {
+            root.classList.remove("vc-nwc-toast-indeterminate");
+            root.classList.add("vc-nwc-toast-error");
+            title.textContent = "Failed";
+            pct.textContent = "";
+            status.textContent = label;
+            close(4000);
+        }
+    };
+}
