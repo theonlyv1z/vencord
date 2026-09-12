@@ -1443,8 +1443,12 @@
     background: rgb(0 0 0 / 8%);
 }
 
-/* Hide Discord's composer attachment preview while our own card is uploading */
+/* Hide Discord's own upload cards (composer preview + the pending in-chat
+   uploading card) while our own progress card handles the send. */
 html.vc-nwc-hide-upload [class*="attachmentContainer_"],
-html.vc-nwc-hide-upload [class*="channelAttachmentArea_"] {
+html.vc-nwc-hide-upload [class*="channelAttachmentArea_"],
+html.vc-nwc-hide-upload [class*="uploadCard_"],
+html.vc-nwc-hide-upload [class*="uploadContainer_"],
+html.vc-nwc-hide-upload [class*="attachedFileCardUploading_"] {
     display: none !important;
 }
