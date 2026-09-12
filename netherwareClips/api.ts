@@ -226,6 +226,12 @@ export function maxUploadSize(channelId?: string): number {
     }
 }
 
+let hideUploadRefs = 0;
+function setUploadHidden(on: boolean) {
+    hideUploadRefs = Math.max(0, hideUploadRefs + (on ? 1 : -1));
+    document.documentElement.classList.toggle("vc-nwc-hide-upload", hideUploadRefs > 0);
+}
+
 export async function sendClipFile(clip: Clip, channelId: string, _draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
     token?.throwIfCancelled();
     onDownload?.(0, clip.size);
@@ -244,8 +250,14 @@ export async function sendClipFile(clip: Clip, channelId: string, _draftType: nu
     upload.on("progress", (loaded: number, total: number) => {
         onUpload?.(Math.min(loaded, total || size), total || size);
     });
-    upload.on("complete", () => { done = true; onPosted?.(); });
-    upload.on("error", () => { done = true; });
+    let hidden = false;
+    const hide = () => { if (!hidden) { hidden = true; setUploadHidden(true); } };
+    const unhide = () => { if (hidden) { hidden = false; setUploadHidden(false); } };
+    // keep the composer preview hidden until well after the message posts
+    upload.on("complete", () => { done = true; onPosted?.(); setTimeout(unhide, 1500); });
+    upload.on("error", () => { done = true; unhide(); });
+    token?.onCancel(unhide);
+    hide();
 
     onUpload?.(0, size);
 

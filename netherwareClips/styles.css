@@ -1442,3 +1442,9 @@
 .theme-light .vc-nwc-toast-bar {
     background: rgb(0 0 0 / 8%);
 }
+
+/* Hide Discord's composer attachment preview while our own card is uploading */
+html.vc-nwc-hide-upload [class*="attachmentContainer_"],
+html.vc-nwc-hide-upload [class*="channelAttachmentArea_"] {
+    display: none !important;
+}
