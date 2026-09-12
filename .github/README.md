@@ -21,6 +21,30 @@ pnpm inject
 
 Restart Discord, then enable the plugins in Vencord → Plugins.
 
+### Requirements
+
+- [Git](https://git-scm.com/)
+- [Node.js](https://nodejs.org/) 18 or newer
+- pnpm — `npm install -g pnpm`
+- Discord **fully closed** before `pnpm inject` (right-click the tray icon → Quit Discord)
+
+### `pnpm inject` doesn't show Discord / nothing changes
+
+The installer only lists Discord installs it can find in the default locations. If your copy is somewhere else, or you use PTB/Canary, tell it where to look:
+
+```bash
+pnpm inject --branch stable
+pnpm inject --location "C:\Users\<you>\AppData\Local\Discord"
+```
+
+(`--branch` accepts `stable`, `ptb` or `canary`. The Microsoft Store version of Discord can't be patched — install Discord from discord.com instead.)
+
+After it prints **Success**, quit Discord completely from the tray and start it again — a "Vencord" section appears in User Settings. If you already had Vencord from the official installer, `pnpm inject` replaces it with this dev build (run `pnpm uninject` to go back).
+
+### Plugins are missing from Vencord → Plugins
+
+Make sure the repo is cloned **into** `src/userplugins` (so `src/userplugins/netherwareClips/index.tsx` exists), then run `pnpm build` again and restart Discord. Anything left at the root of `src/userplugins` other than plugin folders will break the build.
+
 ## Updating
 
 ```bash
