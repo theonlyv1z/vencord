@@ -222,9 +222,13 @@ export async function sendClipFile(clip: Clip, channelId: string, onDownload?: P
             try { upload.cancel(); } catch { }
             reject(new CancelledError());
         });
-        const report = () => onUpload?.(Math.min(Math.max(upload.loaded ?? 0, upload.currentSize ?? 0), size), size);
-        const tick = setInterval(report, 80);
-        upload.on("progress", report);
+        let loaded = 0;
+        const report = () => onUpload?.(Math.min(loaded, size), size);
+        upload.on("progress", (n: number, total: number) => {
+            loaded = typeof n === "number" ? n : upload.loaded ?? 0;
+            onUpload?.(Math.min(loaded, total || size), total || size);
+        });
+        const tick = setInterval(() => { loaded = Math.max(loaded, upload.loaded ?? 0); report(); }, 120);
         const stop = () => clearInterval(tick);
         upload.on("complete", () => {
             stop();
