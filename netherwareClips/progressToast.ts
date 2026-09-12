@@ -118,7 +118,11 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
         closeTimer = window.setTimeout(() => {
             root.classList.remove("vc-nwc-toast-in");
             root.classList.add("vc-nwc-toast-out");
-            window.setTimeout(() => root.remove(), 320);
+            window.setTimeout(() => {
+                root.remove();
+                const c = document.getElementById(CONTAINER_ID);
+                if (c && c.childElementCount === 0) c.remove();
+            }, 320);
         }, delay);
     };
 

@@ -966,6 +966,10 @@
     pointer-events: none;
 }
 
+#vc-nwc-toasts:empty {
+    display: none;
+}
+
 #vc-nwc-toasts.vc-nwc-toasts-floating {
     position: fixed;
     bottom: 92px;
