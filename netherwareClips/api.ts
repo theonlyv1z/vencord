@@ -229,6 +229,12 @@ export function maxUploadSize(channelId?: string): number {
 let hideUploadRefs = 0;
 const HIDE_STYLE_ID = "vc-nwc-hide-upload-style";
 const HIDE_SELECTORS = [
+    // The newest message in the list — the clip we're sending — for the whole
+    // life of our card, so it doesn't peek beneath the card while uploading or
+    // during the "Sent" state. It's revealed (and scrolled into view) once the
+    // card is gone. The trailing spacer is a <div>, so :last-of-type on <li>
+    // reliably targets the last message row.
+    '[class*="scrollerInner_"] > li[class*="messageListItem"]:last-of-type',
     // Discord's bottom spacer in the message list — normally the padding between
     // the last message and the composer. With our card in the composer it reads
     // as an empty gap above the card, so collapse it while we're showing.
