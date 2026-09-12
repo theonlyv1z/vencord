@@ -1443,12 +1443,12 @@
     background: rgb(0 0 0 / 8%);
 }
 
-/* Hide Discord's own upload cards (composer preview + the pending in-chat
-   uploading card) while our own progress card handles the send. */
-html.vc-nwc-hide-upload [class*="attachmentContainer_"],
-html.vc-nwc-hide-upload [class*="channelAttachmentArea_"],
+/* Hide Discord's own upload cards while our progress card handles the send.
+   Any attachment/card that currently contains an upload progress bar is hidden;
+   the finished video (no progress bar) is never affected. */
+html.vc-nwc-hide-upload [class*="attachment_"]:has([class*="progressBar_"]),
+html.vc-nwc-hide-upload [class*="attachmentContainer_"]:has([class*="progressBar_"]),
 html.vc-nwc-hide-upload [class*="uploadCard_"],
-html.vc-nwc-hide-upload [class*="uploadContainer_"],
 html.vc-nwc-hide-upload [class*="attachedFileCardUploading_"] {
     display: none !important;
 }
