@@ -150,6 +150,11 @@ export function fetchLibrary(): Promise<Library> {
     return inflight;
 }
 
+export function prefetchClip(clip: Clip) {
+    if (!settings.store.prefetchOnHover) return;
+    Native.prefetch(mediaUrl(clip)).catch(() => { });
+}
+
 export function warmEmbed(clip: Clip) {
     Native.post(`${baseUrl()}/library/warm/${encodeURIComponent(clip.id)}?force=1`).catch(() => { });
 }
@@ -189,7 +194,7 @@ export async function downloadClipFile(clip: Clip, onProgress?: ProgressFn, toke
     token?.throwIfCancelled();
     const res = await Native.takeDownload(id);
     if (!res.ok) throw new Error(res.error);
-    return new File([res.bytes!], clip.file, { type: res.type || "video/mp4" });
+    return new File([res.bytes as unknown as BlobPart], clip.file, { type: res.type || "video/mp4" });
 }
 
 export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken) {

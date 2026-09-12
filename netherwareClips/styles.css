@@ -590,11 +590,22 @@
     font-weight: 500;
     text-align: left;
     cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    transition: background 0.14s, border-color 0.14s, color 0.14s, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.vc-nwc-popout.vc-nwc-drawer-open .vc-nwc-frow,
+.vc-nwc-popout.vc-nwc-drawer-open .vc-nwc-flabel,
+.vc-nwc-popout.vc-nwc-drawer-open .vc-nwc-fclear {
+    animation: vc-nwc-rise 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .vc-nwc-frow:hover {
     background: rgb(255 255 255 / 5%);
+    transform: translateX(2px);
+}
+
+.vc-nwc-frow:active {
+    transform: scale(0.98);
 }
 
 .vc-nwc-frow.vc-nwc-on {

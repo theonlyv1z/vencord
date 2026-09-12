@@ -9,7 +9,7 @@ import { copyWithToast, insertTextIntoChatInputBox, sendMessage } from "@utils/d
 import { Channel } from "@vencord/discord-types";
 import { React, Toasts, Tooltip, UploadHandler, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
-import { baseUrl, cachedLibrary, CancelledError, CancelToken, Clip, downloadClipFile, fetchLibrary, formatDuration, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
+import { baseUrl, cachedLibrary, CancelledError, CancelToken, Clip, downloadClipFile, fetchLibrary, formatDuration, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
 import { showProgressToast } from "./progressToast";
 import { settings } from "./settings";
 
@@ -80,10 +80,54 @@ function FilterGroup<T extends string>({ label, options, value, onChange }: { la
         <div className={cl("fgroup")}>
             <div className={cl("flabel")}>{label}</div>
             <div className={cl("frows")}>
-                {options.map(([v, text]) => (
-                    <button key={v} className={cl("frow", { on: value === v })} onClick={() => onChange(v)}>{text}</button>
+                {options.map(([v, text], i) => (
+                    <button key={v} className={cl("frow", { on: value === v })} style={{ animationDelay: `${i * 30}ms` }} onClick={() => onChange(v)}>{text}</button>
                 ))}
             </div>
+        </div>
+    );
+}
+
+function CharRows({ names, counts, picked, onToggle }: { names: string[]; counts: Record<string, number>; picked: string[]; onToggle(name: string): void; }) {
+    const listRef = useRef<HTMLDivElement>(null);
+    const prevRects = useRef(new Map<string, number>());
+
+    React.useLayoutEffect(() => {
+        const list = listRef.current;
+        if (!list) return;
+        const rows = [...list.querySelectorAll<HTMLElement>("[data-char]")];
+        const before = prevRects.current;
+        const after = new Map<string, number>();
+        for (const el of rows) {
+            const name = el.dataset.char!;
+            const { top } = el.getBoundingClientRect();
+            after.set(name, top);
+            const prev = before.get(name);
+            if (prev === undefined) {
+                if (before.size) el.animate([{ opacity: 0, transform: "translateY(-6px)" }, { opacity: 1, transform: "none" }], { duration: 220, easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
+                continue;
+            }
+            const delta = prev - top;
+            if (delta) el.animate([{ transform: `translateY(${delta}px)` }, { transform: "none" }], { duration: 320, easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
+        }
+        prevRects.current = after;
+    }, [names]);
+
+    return (
+        <div className={cl("frows")} ref={listRef}>
+            {names.map((name, i) => (
+                <button
+                    key={name}
+                    data-char={name}
+                    className={cl("frow", "frow-char", { on: picked.includes(name) })}
+                    style={{ animationDelay: `${Math.min(i, 14) * 22}ms` }}
+                    onClick={() => onToggle(name)}
+                    title={name}
+                >
+                    <span className={cl("cname")}>{name}</span>
+                    <span className={cl("cnum")}>{counts[name]}</span>
+                </button>
+            ))}
         </div>
     );
 }
@@ -209,7 +253,7 @@ function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: numb
 
     const enter = () => {
         window.clearTimeout(hoverTimer.current);
-        hoverTimer.current = window.setTimeout(() => setHover(true), HOVER_DELAY);
+        hoverTimer.current = window.setTimeout(() => { setHover(true); prefetchClip(clip); }, HOVER_DELAY);
     };
     const leave = () => {
         window.clearTimeout(hoverTimer.current);
@@ -412,8 +456,9 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
     };
     const toggleChar = (name: string) => {
         const chars = filters.chars.includes(name) ? filters.chars.filter(c => c !== name) : [...filters.chars, name];
-        setFilters({ chars });
+        setFilters({ chars, cat: "any" });
     };
+    const setCategory = (cat: Category) => setFilters(cat === "uncat" ? { cat, chars: [] } : { cat });
     const filtersActive = filters.size !== "any" || filters.cat !== "any" || filters.chars.length > 0;
     const [genre, setGenreState] = useState<string>(lastGenre);
     const setGenre = useCallback((g: string) => {
@@ -593,7 +638,10 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
         copyWithToast(linkFor(clip), settings.store.invisibleLink ? "Invis link copied" : "Link copied");
     }, []);
 
-    const genres: Genre[] = library?.genres ?? [];
+    const genres: Genre[] = useMemo(
+        () => [...(library?.genres ?? [])].sort((a, b) => (genreCounts[b.id] ?? 0) - (genreCounts[a.id] ?? 0)),
+        [library, genreCounts]
+    );
     const total = library?.clips.length ?? 0;
     const activeLabel = genre === "all" ? "All" : genre === "pinned" ? "Pinned" : genres.find(g => g.id === genre)?.label ?? genre;
 
@@ -690,20 +738,13 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                 </div>
                 <div className={cl("fside-body")}>
                     <FilterGroup label="Sort by size" options={SIZE_SORTS} value={filters.size} onChange={size => setFilters({ size })} />
-                    <FilterGroup label="Category" options={CATEGORIES} value={filters.cat} onChange={cat => setFilters({ cat })} />
-                    {charNames.length > 0 && (
+                    <FilterGroup label="Category" options={CATEGORIES} value={filters.cat} onChange={setCategory} />
+                    {charNames.length > 0 && filters.cat !== "uncat" && (
                         <div className={cl("fgroup")}>
                             <div className={cl("flabel")}>
                                 {filters.chars.length ? `Characters · ${filters.chars.length} selected` : `Characters · ${charNames.length}`}
                             </div>
-                            <div className={cl("frows")}>
-                                {charNames.map(name => (
-                                    <button key={name} className={cl("frow", "frow-char", { on: filters.chars.includes(name) })} onClick={() => toggleChar(name)} title={name}>
-                                        <span className={cl("cname")}>{name}</span>
-                                        <span className={cl("cnum")}>{charCounts[name]}</span>
-                                    </button>
-                                ))}
-                            </div>
+                            <CharRows names={charNames} counts={charCounts} picked={filters.chars} onToggle={toggleChar} />
                         </div>
                     )}
                     <button className={cl("fclear")} disabled={!filtersActive} onClick={() => setFilters({ ...DEFAULT_FILTERS })}>Reset all filters</button>

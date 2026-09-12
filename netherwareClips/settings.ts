@@ -56,6 +56,11 @@ export const settings = definePluginSettings({
         markers: [0, 20, 40, 60, 80, 100],
         stickToMarkers: false
     },
+    prefetchOnHover: {
+        type: OptionType.BOOLEAN,
+        description: "Start downloading a clip while you hover it so sending is instant (files are cached on disk, 1.5 GB max)",
+        default: true
+    },
     pinnedFirst: {
         type: OptionType.BOOLEAN,
         description: "Show pinned clips before everything else",
