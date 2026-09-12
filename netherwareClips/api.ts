@@ -6,14 +6,14 @@
 
 import * as DataStore from "@api/DataStore";
 import { PluginNative } from "@utils/types";
-import { CloudUpload as TCloudUpload } from "@vencord/discord-types";
-import { CloudUploadPlatform } from "@vencord/discord-types/enums";
-import { findLazy } from "@webpack";
-import { Constants, FluxDispatcher, MessageActions, PendingReplyStore, RestAPI, SnowflakeUtils } from "@webpack/common";
+import { findByCodeLazy, findByPropsLazy } from "@webpack";
+import { ChannelStore, PendingReplyStore, UserStore } from "@webpack/common";
 
 import { settings } from "./settings";
 
-const CloudUpload: typeof TCloudUpload = findLazy(m => m.prototype?.trackUploadFinished);
+const PremiumUtils = findByPropsLazy("getUserMaxFileSize");
+const promptToUploadRaw = findByCodeLazy("Unexpected mismatch between files and file metadata") as
+    (files: File[], channel: unknown, draftType: number, opts?: { requireConfirm?: boolean; }) => void;
 
 const Native = VencordNative.pluginHelpers.NetherwareClips as PluginNative<typeof import("./native")>;
 
@@ -208,63 +208,34 @@ export function pendingReplyTarget(channelId: string): { name: string; } | null 
     return { name: author.globalName || author.username || "user" };
 }
 
-export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
-    const reply = PendingReplyStore.getPendingReply(channelId);
-    if (reply) FluxDispatcher.dispatch({ type: "DELETE_PENDING_REPLY", channelId });
+export function maxUploadSize(): number {
+    try {
+        return PremiumUtils.getUserMaxFileSize(UserStore.getCurrentUser()) || 10 * 1024 * 1024;
+    } catch {
+        return 10 * 1024 * 1024;
+    }
+}
 
+export async function sendClipFile(clip: Clip, channelId: string, draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
     const file = await downloadClipFile(clip, onDownload, token);
     token?.throwIfCancelled();
 
-    const upload = new CloudUpload({
-        file,
-        isThumbnail: false,
-        platform: CloudUploadPlatform.WEB
-    }, channelId);
+    // fake an upload sweep for the card: Discord runs its own upload UI after this
+    const { size } = file;
+    onUpload?.(0, size);
+    let shown = 0;
+    const tick = setInterval(() => { shown = Math.min(size, shown + size * 0.12); onUpload?.(shown, size); }, 90);
 
-    await new Promise<void>((resolve, reject) => {
-        const { size } = file;
-        let posted = false;
-        token?.onCancel(() => {
-            if (posted) return;
-            try { upload.cancel(); } catch { }
-            reject(new CancelledError());
-        });
-        let loaded = 0;
-        const report = () => onUpload?.(Math.min(loaded, size), size);
-        upload.on("progress", (n: number, total: number) => {
-            loaded = typeof n === "number" ? n : upload.loaded ?? 0;
-            onUpload?.(Math.min(loaded, total || size), total || size);
-        });
-        const tick = setInterval(() => { loaded = Math.max(loaded, upload.loaded ?? 0); report(); }, 120);
-        const stop = () => clearInterval(tick);
-        upload.on("complete", () => {
-            stop();
-            if (token?.cancelled) return;
-            posted = true;
-            onUpload?.(size, size);
-            onPosted?.();
-            RestAPI.post({
-                url: Constants.Endpoints.MESSAGES(channelId),
-                body: {
-                    channel_id: channelId,
-                    content: "",
-                    nonce: SnowflakeUtils.fromTimestamp(Date.now()),
-                    sticker_ids: [],
-                    type: 0,
-                    attachments: [{
-                        id: "0",
-                        filename: upload.filename,
-                        uploaded_filename: upload.uploadedFilename,
-                        ...(clip.width && clip.height ? { width: clip.width, height: clip.height } : {}),
-                        ...(clip.durationSec ? { duration_secs: clip.durationSec } : {})
-                    }],
-                    message_reference: reply ? MessageActions.getSendMessageOptionsForReply(reply)?.messageReference : null
-                }
-            }).then(() => resolve(), reject);
-        });
-        upload.on("error", () => { stop(); reject(new Error("Upload failed")); });
-        upload.upload();
-    });
+    try {
+        const channel = ChannelStore.getChannel(channelId);
+        promptToUploadRaw([file], channel, draftType, { requireConfirm: false });
+        clearInterval(tick);
+        onUpload?.(size, size);
+        onPosted?.();
+    } catch (e) {
+        clearInterval(tick);
+        throw e;
+    }
 }
 
 export function formatDuration(sec: number) {

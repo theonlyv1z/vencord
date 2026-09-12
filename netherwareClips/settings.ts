@@ -56,17 +56,10 @@ export const settings = definePluginSettings({
         markers: [0, 20, 40, 60, 80, 100],
         stickToMarkers: false
     },
-    largeClipAsLink: {
+    overLimitAsLink: {
         type: OptionType.BOOLEAN,
-        description: "Discord cannot show an inline player for very large uploads. Send those as an invisible embed link instead (instant, always plays)",
+        description: "If a clip is bigger than your Discord upload limit, send it as an invisible embed link instead of failing",
         default: true
-    },
-    largeClipThresholdMB: {
-        type: OptionType.SLIDER,
-        description: "Clips at or above this size (MB) use the link fallback",
-        default: 50,
-        markers: [25, 40, 50, 75, 100],
-        stickToMarkers: true
     },
     prefetchOnHover: {
         type: OptionType.BOOLEAN,

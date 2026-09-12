@@ -9,7 +9,7 @@ import { copyWithToast, insertTextIntoChatInputBox, sendMessage } from "@utils/d
 import { Channel } from "@vencord/discord-types";
 import { React, Toasts, Tooltip, UploadHandler, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
-import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, pendingReplyTarget, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
+import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, maxUploadSize, mediaUrl, pendingReplyTarget, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
 import { showProgressToast } from "./progressToast";
 import { settings } from "./settings";
 
@@ -621,7 +621,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
         }
 
         if (action === "sendfile") {
-            const tooBig = settings.store.largeClipAsLink && clip.size >= settings.store.largeClipThresholdMB * 1024 * 1024;
+            const tooBig = settings.store.overLimitAsLink && clip.size > maxUploadSize();
             if (tooBig) {
                 finish();
                 const toast = showProgressToast(clip, { replyTo: pendingReplyTarget(channel.id)?.name });
@@ -645,6 +645,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                 await sendClipFile(
                     clip,
                     channel.id,
+                    draftType,
                     (r, t) => { setStage("Fetching from netherware.xyz"); toast.progress(r, t); },
                     (r, t) => { setStage("Uploading to Discord"); toast.progress(r, t); },
                     token,
