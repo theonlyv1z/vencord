@@ -21,22 +21,15 @@ let lastQuery = "";
 let lastShown = 0;
 let lastScroll = 0;
 
-type SortKey = "newest" | "oldest" | "longest" | "shortest" | "creator";
-type Orientation = "all" | "portrait" | "landscape";
-type Length = "all" | "short" | "medium" | "long";
-interface Filters { sort: SortKey; orientation: Orientation; length: Length; }
-const DEFAULT_FILTERS: Filters = { sort: "newest", orientation: "all", length: "all" };
+type SizeSort = "any" | "small" | "big";
+type Category = "any" | "uncat";
+interface Filters { size: SizeSort; cat: Category; chars: string[]; }
+const DEFAULT_FILTERS: Filters = { size: "any", cat: "any", chars: [] };
 let lastFilters: Filters = { ...DEFAULT_FILTERS };
+let lastFiltersOpen = false;
 
-const SORTS: [SortKey, string][] = [["newest", "Newest"], ["oldest", "Oldest"], ["longest", "Longest"], ["shortest", "Shortest"], ["creator", "Creator A–Z"]];
-const ORIENTATIONS: [Orientation, string][] = [["all", "Any"], ["portrait", "Portrait"], ["landscape", "Landscape"]];
-const LENGTHS: [Length, string][] = [["all", "Any"], ["short", "< 15s"], ["medium", "15–30s"], ["long", "> 30s"]];
-
-function lengthBucket(sec: number): Length {
-    if (sec < 15) return "short";
-    if (sec <= 30) return "medium";
-    return "long";
-}
+const SIZE_SORTS: [SizeSort, string][] = [["any", "Default"], ["small", "↑\u00a0 Smallest first"], ["big", "↓\u00a0 Largest first"]];
+const CATEGORIES: [Category, string][] = [["any", "All videos"], ["uncat", "Uncategorised"]];
 
 type PickAction = "insert" | "send" | "upload" | "sendfile";
 
@@ -82,18 +75,24 @@ const FilterIcon = () => (
     </svg>
 );
 
-function FilterRow<T extends string>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange(v: T): void; }) {
+function FilterGroup<T extends string>({ label, options, value, onChange }: { label: string; options: [T, string][]; value: T; onChange(v: T): void; }) {
     return (
-        <div className={cl("filter-row")}>
-            <span className={cl("filter-label")}>{label}</span>
-            <div className={cl("filter-chips")}>
+        <div className={cl("fgroup")}>
+            <div className={cl("flabel")}>{label}</div>
+            <div className={cl("frows")}>
                 {options.map(([v, text]) => (
-                    <button key={v} className={cl("filter-chip", { active: value === v })} onClick={() => onChange(v)}>{text}</button>
+                    <button key={v} className={cl("frow", { on: value === v })} onClick={() => onChange(v)}>{text}</button>
                 ))}
             </div>
         </div>
     );
 }
+
+const ChevronIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
 
 const PinIcon = () => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -405,14 +404,23 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
     const [error, setError] = useState<string | null>(null);
     const [query, setQuery] = useState(lastQuery);
     const [filters, setFiltersState] = useState<Filters>(lastFilters);
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [filtersOpen, setFiltersOpenState] = useState(lastFiltersOpen);
+    const setFiltersOpen = (v: boolean) => { lastFiltersOpen = v; setFiltersOpenState(v); };
     const setFilters = (patch: Partial<Filters>) => {
         lastFilters = { ...lastFilters, ...patch };
         setFiltersState(lastFilters);
     };
-    const filtersActive = filters.sort !== "newest" || filters.orientation !== "all" || filters.length !== "all";
+    const toggleChar = (name: string) => {
+        const chars = filters.chars.includes(name) ? filters.chars.filter(c => c !== name) : [...filters.chars, name];
+        setFilters({ chars });
+    };
+    const filtersActive = filters.size !== "any" || filters.cat !== "any" || filters.chars.length > 0;
     const [genre, setGenreState] = useState<string>(lastGenre);
-    const setGenre = useCallback((g: string) => { lastGenre = g; setGenreState(g); }, []);
+    const setGenre = useCallback((g: string) => {
+        lastGenre = g;
+        setGenreState(g);
+        if (lastFilters.chars.length) { lastFilters = { ...lastFilters, chars: [] }; setFiltersState(lastFilters); }
+    }, []);
     const deferredQuery = React.useDeferredValue(query);
     const [shown, setShown] = useState(Math.max(lastShown, settings.store.pageSize));
     const firstRender = useRef(true);
@@ -468,26 +476,38 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
     const sorted = useMemo(() => {
         if (!library) return [];
         const pin = settings.store.pinnedFirst ? (a: Clip, b: Clip) => Number(b.pinned) - Number(a.pinned) : () => 0;
-        const by: Record<SortKey, (a: Clip, b: Clip) => number> = {
-            newest: (a, b) => b.addedAt - a.addedAt,
-            oldest: (a, b) => a.addedAt - b.addedAt,
-            longest: (a, b) => (b.durationSec || 0) - (a.durationSec || 0),
-            shortest: (a, b) => (a.durationSec || 0) - (b.durationSec || 0),
-            creator: (a, b) => (a.author || "").localeCompare(b.author || "") || b.addedAt - a.addedAt
+        const by: Record<SizeSort, (a: Clip, b: Clip) => number> = {
+            any: (a, b) => b.addedAt - a.addedAt,
+            small: (a, b) => (a.size || 0) - (b.size || 0) || b.addedAt - a.addedAt,
+            big: (a, b) => (b.size || 0) - (a.size || 0) || b.addedAt - a.addedAt
         };
-        const cmp = by[filters.sort];
+        const cmp = by[filters.size];
         return [...library.clips].sort((a, b) => pin(a, b) || cmp(a, b));
-    }, [library, filters.sort]);
+    }, [library, filters.size]);
+
+    const charCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        if (!library || genre === "all" || genre === "pinned") return counts;
+        for (const c of library.clips) {
+            if (c.genre !== genre) continue;
+            for (const name of c.characters ?? []) counts[name] = (counts[name] ?? 0) + 1;
+        }
+        return counts;
+    }, [library, genre]);
+    const charNames = useMemo(() => {
+        const names = Object.keys(charCounts).sort((a, b) => charCounts[b] - charCounts[a]);
+        const picked = new Set(filters.chars);
+        return [...names.filter(n => picked.has(n)), ...names.filter(n => !picked.has(n))];
+    }, [charCounts, filters.chars]);
 
     const filtered = useMemo(() => {
         const terms = deferredQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
         return sorted.filter(c =>
-            (genre === "all" || (genre === "pinned" ? c.pinned : c.genre === genre))
-            && (filters.orientation === "all" || (filters.orientation === "portrait" ? c.height >= c.width : c.width > c.height))
-            && (filters.length === "all" || lengthBucket(c.durationSec || 0) === filters.length)
+            (filters.cat === "uncat" ? c.genre === "other" : (genre === "all" || (genre === "pinned" ? c.pinned : c.genre === genre)))
+            && (!filters.chars.length || (c.characters ?? []).some(n => filters.chars.includes(n)))
             && matches(c, terms)
         );
-    }, [sorted, deferredQuery, genre, filters.orientation, filters.length]);
+    }, [sorted, deferredQuery, genre, filters.cat, filters.chars]);
 
     const pinnedCount = useMemo(() => library?.clips.reduce((n, c) => n + Number(c.pinned), 0) ?? 0, [library]);
 
@@ -594,6 +614,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                 </button>
             </div>
 
+            <div className={cl("body", { "drawer-open": filtersOpen })}>
             <div className={cl("scroll")} ref={scrollRef}>
                 {!library && !error && <Skeleton />}
 
@@ -624,7 +645,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                         <span className={cl("section-count")}>{filtered.length}</span>
                         <button
                             className={cl("filter-btn", { active: filtersActive, open: filtersOpen })}
-                            onClick={() => setFiltersOpen(v => !v)}
+                            onClick={() => setFiltersOpen(!filtersOpen)}
                             aria-expanded={filtersOpen}
                         >
                             <FilterIcon />
@@ -634,16 +655,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     </div>
                 )}
 
-                {library && filtersOpen && (
-                    <div className={cl("filters")}>
-                        <FilterRow label="Sort" options={SORTS} value={filters.sort} onChange={sort => setFilters({ sort })} />
-                        <FilterRow label="Shape" options={ORIENTATIONS} value={filters.orientation} onChange={orientation => setFilters({ orientation })} />
-                        <FilterRow label="Length" options={LENGTHS} value={filters.length} onChange={length => setFilters({ length })} />
-                        {filtersActive && (
-                            <button className={cl("filter-reset")} onClick={() => setFilters({ ...DEFAULT_FILTERS })}>Reset</button>
-                        )}
-                    </div>
-                )}
+
 
                 {error && !library && (
                     <div className={cl("state", "state-error")}>
@@ -661,6 +673,34 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     </div>
                 )}
                 {shown < filtered.length && <div ref={sentinelRef} className={cl("sentinel")}><span className={cl("spinner")} /></div>}
+            </div>
+
+            <aside className={cl("fside")} aria-hidden={!filtersOpen}>
+                <div className={cl("fside-head")}>
+                    <span>Filters</span>
+                    <button className={cl("fside-close")} onClick={() => setFiltersOpen(false)} aria-label="Close filters"><ChevronIcon /></button>
+                </div>
+                <div className={cl("fside-body")}>
+                    <FilterGroup label="Sort by size" options={SIZE_SORTS} value={filters.size} onChange={size => setFilters({ size })} />
+                    <FilterGroup label="Category" options={CATEGORIES} value={filters.cat} onChange={cat => setFilters({ cat })} />
+                    {charNames.length > 0 && (
+                        <div className={cl("fgroup")}>
+                            <div className={cl("flabel")}>
+                                {filters.chars.length ? `Characters · ${filters.chars.length} selected` : `Characters · ${charNames.length}`}
+                            </div>
+                            <div className={cl("frows")}>
+                                {charNames.map(name => (
+                                    <button key={name} className={cl("frow", "frow-char", { on: filters.chars.includes(name) })} onClick={() => toggleChar(name)} title={name}>
+                                        <span className={cl("cname")}>{name}</span>
+                                        <span className={cl("cnum")}>{charCounts[name]}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <button className={cl("fclear")} disabled={!filtersActive} onClick={() => setFilters({ ...DEFAULT_FILTERS })}>Reset all filters</button>
+                </div>
+            </aside>
             </div>
         </div>
     );
