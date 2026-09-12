@@ -26,7 +26,7 @@ type Category = "any" | "uncat";
 interface Filters { size: SizeSort; cat: Category; chars: string[]; }
 const DEFAULT_FILTERS: Filters = { size: "any", cat: "any", chars: [] };
 let lastFilters: Filters = { ...DEFAULT_FILTERS };
-let lastFiltersOpen = false;
+let lastFiltersOpen = true;
 
 const SIZE_SORTS: [SizeSort, string][] = [["any", "Default"], ["small", "↑\u00a0 Smallest first"], ["big", "↓\u00a0 Largest first"]];
 const CATEGORIES: [Category, string][] = [["any", "All videos"], ["uncat", "Uncategorised"]];
