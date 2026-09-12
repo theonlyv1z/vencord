@@ -26,6 +26,66 @@
     color: var(--interactive-active, var(--text-default));
 }
 
+@keyframes vc-nwc-glow-pulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.08); }
+}
+
+.vc-nwc-anchor .vc-nwc-button {
+    position: relative;
+    isolation: isolate;
+    border-radius: 8px;
+}
+
+.vc-nwc-anchor .vc-nwc-button::before {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: 8px;
+    background:
+        radial-gradient(60% 60% at 50% 45%, rgb(88 140 255 / 55%), rgb(55 105 212 / 0%) 70%),
+        linear-gradient(180deg, rgb(55 105 212 / 28%), rgb(12 57 153 / 32%));
+    box-shadow: 0 0 0 1px rgb(120 160 255 / 25%), 0 0 18px rgb(55 105 212 / 45%);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.18s, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.vc-nwc-anchor .vc-nwc-button::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: 8px;
+    background: radial-gradient(70% 70% at 50% 50%, rgb(140 180 255 / 35%), transparent 70%);
+    filter: blur(6px);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.2s, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: -2;
+    pointer-events: none;
+}
+
+.vc-nwc-anchor:hover .vc-nwc-button::before,
+.vc-nwc-anchor.vc-nwc-open .vc-nwc-button::before {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.vc-nwc-anchor:hover .vc-nwc-button::after,
+.vc-nwc-anchor.vc-nwc-open .vc-nwc-button::after {
+    opacity: 1;
+    transform: scale(1.15);
+    animation: vc-nwc-glow-pulse 2.2s ease-in-out infinite;
+}
+
+.vc-nwc-anchor:hover .vc-nwc-icon,
+.vc-nwc-anchor.vc-nwc-open .vc-nwc-icon {
+    color: #fff;
+    filter: drop-shadow(0 0 6px rgb(120 160 255 / 70%));
+}
+
 @keyframes vc-nwc-pop {
     from { opacity: 0; transform: translateY(10px) scale(0.98); }
     to { opacity: 1; transform: translateY(0) scale(1); }
