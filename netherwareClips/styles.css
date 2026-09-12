@@ -431,7 +431,7 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    right: calc(100% + 10px);
+    left: calc(100% + 10px);
     width: 224px;
     display: flex;
     flex-direction: column;
@@ -440,8 +440,8 @@
     box-shadow: 0 20px 60px rgb(0 0 0 / 45%), 0 0 0 1px var(--border-subtle, rgb(255 255 255 / 6%));
     opacity: 0;
     visibility: hidden;
-    transform: translateX(14px) scale(0.98);
-    transform-origin: right center;
+    transform: translateX(-14px) scale(0.98);
+    transform-origin: left center;
     transition: opacity 0.2s, transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s 0.26s;
     z-index: 4;
 }
@@ -463,6 +463,10 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-default, var(--text-normal));
+}
+
+.vc-nwc-fside-close svg {
+    transform: scaleX(-1);
 }
 
 .vc-nwc-fside-close {
