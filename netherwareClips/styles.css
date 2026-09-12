@@ -1299,14 +1299,82 @@
     transform: scale(0.94) !important;
 }
 
+@keyframes vc-nwc-toast-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+}
+
+@keyframes vc-nwc-toast-glow-red {
+    0% { box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px rgb(237 66 69 / 0%), 0 0 0 0 rgb(237 66 69 / 0%); }
+    30% { box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px rgb(237 66 69 / 75%), 0 0 28px 4px rgb(237 66 69 / 35%); }
+    100% { box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px rgb(237 66 69 / 30%), 0 0 0 0 rgb(237 66 69 / 0%); }
+}
+
+.vc-nwc-toast-cancelled.vc-nwc-toast-in {
+    animation: vc-nwc-toast-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both, vc-nwc-toast-glow-red 1.4s ease-out both;
+}
+
 .vc-nwc-toast-cancelled .vc-nwc-toast-title {
-    color: var(--text-muted);
+    color: var(--nwc-bad);
+}
+
+.vc-nwc-toast-cancelled .vc-nwc-toast-thumb {
+    box-shadow: 0 0 0 2px var(--nwc-bad);
+    transition: box-shadow 0.3s;
+}
+
+.vc-nwc-toast-cancelled .vc-nwc-toast-thumb img {
+    filter: grayscale(1) brightness(0.7);
+    transition: filter 0.4s;
 }
 
 .vc-nwc-toast-cancelled .vc-nwc-toast-fill {
-    background: var(--text-muted);
-    box-shadow: none;
+    background: var(--nwc-bad);
+    box-shadow: 0 0 12px rgb(237 66 69 / 55%);
     animation: none;
+    transition: width 0.55s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s;
+}
+
+.vc-nwc-toast-cancelled .vc-nwc-toast-reply {
+    background: color-mix(in srgb, var(--nwc-bad) 16%, transparent);
+    color: var(--nwc-bad);
+}
+
+.vc-nwc-toast-badge {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #fff;
+    animation: vc-nwc-toast-check 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.vc-nwc-toast-badge-x {
+    background: var(--nwc-bad);
+    box-shadow: 0 4px 14px rgb(237 66 69 / 50%);
+}
+
+.vc-nwc-toast-badge-x::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--nwc-bad);
+    animation: vc-nwc-toast-ring 0.8s ease-out 0.15s both;
+}
+
+.vc-nwc-toast-badge-x svg {
+    animation: vc-nwc-toast-spin-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both;
+}
+
+@keyframes vc-nwc-toast-spin-in {
+    from { transform: rotate(-90deg) scale(0.5); opacity: 0; }
+    to { transform: rotate(0) scale(1); opacity: 1; }
 }
 
 .vc-nwc-toast-error .vc-nwc-toast-status {

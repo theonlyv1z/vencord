@@ -97,9 +97,9 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
     return {
         onCancel(fn) { cancelHandler = fn; },
         cancelled() {
-            settle("vc-nwc-toast-cancelled", "Cancelled", 1400);
-            status.textContent = "";
-            fill.style.width = "0%";
+            settle("vc-nwc-toast-cancelled", "Cancelled", 1600);
+            status.innerHTML = '<span class="vc-nwc-toast-badge vc-nwc-toast-badge-x"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>';
+            requestAnimationFrame(() => { fill.style.width = "0%"; });
         },
         stage(label) {
             title.textContent = label;
