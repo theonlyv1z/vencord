@@ -85,6 +85,25 @@ const ClipsButton: ChatBarButtonFactory = ({ isAnyChat, channel, type }) => {
 };
 
 const BACKGROUND_REFRESH = 5 * 60_000;
+
+function matchesHotkey(e: KeyboardEvent, combo: string) {
+    const parts = combo.toLowerCase().split("+").map(p => p.trim()).filter(Boolean);
+    if (!parts.length) return false;
+    const key = parts.pop()!;
+    const want = { ctrl: parts.includes("ctrl"), shift: parts.includes("shift"), alt: parts.includes("alt"), meta: parts.includes("meta") || parts.includes("win") };
+    return e.ctrlKey === want.ctrl && e.shiftKey === want.shift && e.altKey === want.alt && e.metaKey === want.meta
+        && e.key.toLowerCase() === key;
+}
+
+function onHotkey(e: KeyboardEvent) {
+    const combo = settings.store.hotkey?.trim();
+    if (!combo || e.repeat || !matchesHotkey(e, combo)) return;
+    const button = document.querySelector<HTMLElement>(".vc-nwc-button");
+    if (!button) return;
+    e.preventDefault();
+    e.stopPropagation();
+    button.click();
+}
 let refreshTimer: number | undefined;
 
 const FONT_ID = "vc-nwc-font";
@@ -114,10 +133,12 @@ export default definePlugin({
         const warm = () => fetchLibrary().catch(() => { });
         hydrate().then(warm);
         refreshTimer = window.setInterval(warm, BACKGROUND_REFRESH);
+        document.addEventListener("keydown", onHotkey, true);
     },
 
     stop() {
         document.getElementById(FONT_ID)?.remove();
         window.clearInterval(refreshTimer);
+        document.removeEventListener("keydown", onHotkey, true);
     }
 });

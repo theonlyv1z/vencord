@@ -6,7 +6,7 @@ search captions/creators, hover to preview (with sound), and click a clip to sen
 
 ## Features
 
-- Chat-bar button with a picker popout anchored to the message box (works at any window size)
+- Chat-bar button (or **Ctrl+Shift+N**) with a picker popout anchored to the message box (works at any window size)
 - Genre cover strip (wheel / drag / arrow scrolling) + search
 - Hover video previews with volume control
 - One click sends the mp4 directly (or inserts an invisible embed link / attaches for review — configurable)
@@ -32,6 +32,7 @@ Restart Discord and enable **NetherwareClips** in Vencord → Plugins.
 
 | Setting | Default |
 | --- | --- |
+| Hotkey | `ctrl+shift+n` |
 | Library origin | `https://netherware.xyz` |
 | Click action | Send the video file immediately |
 | Invisible link | on |

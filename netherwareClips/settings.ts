@@ -14,6 +14,11 @@ export const settings = definePluginSettings({
         default: "https://netherware.xyz",
         restartNeeded: false
     },
+    hotkey: {
+        type: OptionType.STRING,
+        description: "Keyboard shortcut to open the picker (e.g. ctrl+shift+n, alt+n; blank to disable)",
+        default: "ctrl+shift+n"
+    },
     clickAction: {
         type: OptionType.SELECT,
         description: "What clicking a clip does",
