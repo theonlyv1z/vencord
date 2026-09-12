@@ -121,7 +121,19 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
     requestAnimationFrame(() => root.classList.add("vc-nwc-toast-in"));
 
     let released = false;
-    const release = () => { if (!released) { released = true; setUploadHidden(false); } };
+    const release = () => {
+        if (released) return;
+        released = true;
+        setUploadHidden(false);
+        // Once our card is gone and the spacer is restored, make sure the
+        // just-sent video is fully in view (a single scroll, no mid-upload jump).
+        const scroller = document.querySelector<HTMLElement>('[class*="messagesWrapper_"] [class*="scroller_"]');
+        if (scroller) {
+            const pin = () => { scroller.scrollTop = scroller.scrollHeight; };
+            requestAnimationFrame(pin);
+            setTimeout(pin, 200);
+        }
+    };
 
     let closeTimer: number | undefined;
     const close = (delay: number) => {
