@@ -500,22 +500,29 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
             return;
         }
         setShown(settings.store.pageSize);
+        lastScroll = 0;
         scrollRef.current?.scrollTo({ top: 0 });
     }, [query, genre, filters]);
 
     React.useLayoutEffect(() => {
         const el = scrollRef.current;
-        if (!el || !library || !lastScroll) return;
+        if (!el || !library || !lastScroll || restoringScroll.current) return;
+        restoringScroll.current = true;
         const target = lastScroll;
-        lastScroll = 0;
         el.scrollTop = target;
-        const raf = requestAnimationFrame(() => { el.scrollTop = target; });
+        const raf = requestAnimationFrame(() => {
+            el.scrollTop = target;
+            restoringScroll.current = false;
+        });
         return () => cancelAnimationFrame(raf);
     }, [library]);
 
-    useEffect(() => () => {
-        lastScroll = scrollRef.current?.scrollTop ?? 0;
+    const onScroll = useCallback(() => {
+        if (restoringScroll.current) return;
+        lastScroll = scrollRef.current?.scrollTop ?? lastScroll;
     }, []);
+
+    const restoringScroll = useRef(false);
     useEffect(() => { lastQuery = query; }, [query]);
     useEffect(() => { lastShown = shown; }, [shown]);
 
@@ -677,7 +684,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
             </div>
 
             <div className={cl("body")}>
-            <div className={cl("scroll")} ref={scrollRef}>
+            <div className={cl("scroll")} ref={scrollRef} onScroll={onScroll}>
                 {!library && !error && <Skeleton />}
 
                 {library && (
