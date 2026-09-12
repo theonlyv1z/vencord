@@ -227,9 +227,34 @@ export function maxUploadSize(channelId?: string): number {
 }
 
 let hideUploadRefs = 0;
+const HIDE_STYLE_ID = "vc-nwc-hide-upload-style";
+const HIDE_SELECTORS = [
+    // the pending message row that is mid-upload (removes the empty gap)
+    'li:has([class*="progressContainer"])',
+    'li:has([class*="mediaBarProgress"])',
+    '[class*="messageListItem"]:has([class*="progressContainer"])',
+    '[class*="messageListItem"]:has([class*="mediaBarProgress"])',
+    // the composer attachment preview + the in-chat uploading card
+    '[class*="attachmentsWrapper_"]',
+    '[class*="attachmentContainer_"]',
+    '[class*="channelAttachmentArea_"]',
+    '[class*="uploadCard_"]'
+];
+const HIDE_CSS = HIDE_SELECTORS.join(",") + "{display:none !important;}";
+
 function setUploadHidden(on: boolean) {
     hideUploadRefs = Math.max(0, hideUploadRefs + (on ? 1 : -1));
-    document.documentElement.classList.toggle("vc-nwc-hide-upload", hideUploadRefs > 0);
+    const existing = document.getElementById(HIDE_STYLE_ID);
+    if (hideUploadRefs > 0) {
+        if (!existing) {
+            const el = document.createElement("style");
+            el.id = HIDE_STYLE_ID;
+            el.textContent = HIDE_CSS;
+            document.head.appendChild(el);
+        }
+    } else {
+        existing?.remove();
+    }
 }
 
 export async function sendClipFile(clip: Clip, channelId: string, _draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
