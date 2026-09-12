@@ -6,14 +6,15 @@
 
 import * as DataStore from "@api/DataStore";
 import { PluginNative } from "@utils/types";
-import { findByCodeLazy, findByPropsLazy } from "@webpack";
-import { ChannelStore, GuildStore, PendingReplyStore, UserStore } from "@webpack/common";
+import { CloudUpload as TCloudUpload } from "@vencord/discord-types";
+import { CloudUploadPlatform } from "@vencord/discord-types/enums";
+import { findByPropsLazy, findLazy } from "@webpack";
+import { ChannelStore, FluxDispatcher, GuildStore, MessageActions, PendingReplyStore, UserStore } from "@webpack/common";
 
 import { settings } from "./settings";
 
 const PremiumUtils = findByPropsLazy("getUserMaxFileSize");
-const promptToUploadRaw = findByCodeLazy("Unexpected mismatch between files and file metadata") as
-    (files: File[], channel: unknown, draftType: number, opts?: { requireConfirm?: boolean; }) => void;
+const CloudUpload: typeof TCloudUpload = findLazy(m => m.prototype?.trackUploadFinished);
 
 const Native = VencordNative.pluginHelpers.NetherwareClips as PluginNative<typeof import("./native")>;
 
@@ -225,26 +226,39 @@ export function maxUploadSize(channelId?: string): number {
     }
 }
 
-export async function sendClipFile(clip: Clip, channelId: string, draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
+export async function sendClipFile(clip: Clip, channelId: string, _draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
+    token?.throwIfCancelled();
+    onDownload?.(0, clip.size);
     const file = await downloadClipFile(clip, onDownload, token);
     token?.throwIfCancelled();
 
-    // fake an upload sweep for the card: Discord runs its own upload UI after this
     const { size } = file;
-    onUpload?.(0, size);
-    let shown = 0;
-    const tick = setInterval(() => { shown = Math.min(size, shown + size * 0.12); onUpload?.(shown, size); }, 90);
+    const upload = new CloudUpload({ file, isThumbnail: false, platform: CloudUploadPlatform.WEB }, channelId);
 
-    try {
-        const channel = ChannelStore.getChannel(channelId);
-        promptToUploadRaw([file], channel, draftType, { requireConfirm: false });
-        clearInterval(tick);
-        onUpload?.(size, size);
-        onPosted?.();
-    } catch (e) {
-        clearInterval(tick);
-        throw e;
-    }
+    let done = false;
+    token?.onCancel(() => {
+        if (done) return;
+        try { upload.cancel(); } catch { }
+    });
+
+    upload.on("progress", (loaded: number, total: number) => {
+        onUpload?.(Math.min(loaded, total || size), total || size);
+    });
+    upload.on("complete", () => { done = true; onPosted?.(); });
+    upload.on("error", () => { done = true; });
+
+    onUpload?.(0, size);
+
+    const reply = PendingReplyStore.getPendingReply(channelId);
+    const replyOptions = reply ? MessageActions.getSendMessageOptionsForReply(reply) : {};
+    if (reply) FluxDispatcher.dispatch({ type: "DELETE_PENDING_REPLY", channelId });
+
+    await MessageActions.sendMessage(
+        channelId,
+        { content: "", tts: false, invalidEmojis: [], validNonShortcutEmojis: [] },
+        true,
+        { ...replyOptions, attachmentsToUpload: [upload] }
+    );
 }
 
 export function formatDuration(sec: number) {

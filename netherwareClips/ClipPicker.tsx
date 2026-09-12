@@ -646,7 +646,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     clip,
                     channel.id,
                     draftType,
-                    (r, t) => { setStage("Fetching from netherware.xyz"); toast.progress(r, t); },
+                    (r, t) => { setStage("Fetching clip"); toast.progress(r, t); },
                     (r, t) => { setStage("Uploading to Discord"); toast.progress(r, t); },
                     token,
                     () => toast.success("Sent")

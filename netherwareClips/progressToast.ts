@@ -24,6 +24,7 @@ export interface ProgressToast {
     success(label?: string): void;
     fail(label: string): void;
     cancelled(): void;
+    dismiss(): void;
     onCancel(fn: () => void): void;
 }
 
@@ -96,6 +97,7 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
 
     return {
         onCancel(fn) { cancelHandler = fn; },
+        dismiss() { xBtn.remove(); close(0); },
         cancelled() {
             settle("vc-nwc-toast-cancelled", "Cancelled", 1600);
             status.innerHTML = '<span class="vc-nwc-toast-badge vc-nwc-toast-badge-x"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>';
