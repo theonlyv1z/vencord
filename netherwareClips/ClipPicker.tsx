@@ -132,6 +132,12 @@ function CharRows({ names, counts, picked, onToggle }: { names: string[]; counts
     );
 }
 
+const UpIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 19V6m0 0-6 6m6-6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+
 const ChevronIcon = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="m15 6-6 6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -246,6 +252,7 @@ function HoverPreview({ clip }: { clip: Clip; }) {
 
 const HOVER_DELAY = 180;
 const PREFETCH_DELAY = 900;
+const TOP_THRESHOLD = 420;
 
 function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: number; onPick(clip: Clip, action?: PickAction): void; onCopy(clip: Clip): void; }) {
     const [hover, setHover] = useState(false);
@@ -517,10 +524,14 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
         return () => cancelAnimationFrame(raf);
     }, [library]);
 
+    const [showTop, setShowTop] = useState(lastScroll > TOP_THRESHOLD);
     const onScroll = useCallback(() => {
+        const top = scrollRef.current?.scrollTop ?? 0;
+        setShowTop(top > TOP_THRESHOLD);
         if (restoringScroll.current) return;
-        lastScroll = scrollRef.current?.scrollTop ?? lastScroll;
+        lastScroll = top;
     }, []);
+    const scrollToTop = () => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 
     const restoringScroll = useRef(false);
     useEffect(() => { lastQuery = query; }, [query]);
@@ -743,6 +754,9 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                 )}
                 {shown < filtered.length && <div ref={sentinelRef} className={cl("sentinel")}><span className={cl("spinner")} /></div>}
             </div>
+            <button className={cl("totop", { show: showTop })} onClick={scrollToTop} aria-label="Back to top" tabIndex={showTop ? 0 : -1}>
+                <UpIcon />
+            </button>
             </div>
 
             <aside className={cl("fside")} aria-hidden={!filtersOpen}>

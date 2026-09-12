@@ -495,6 +495,7 @@
 }
 
 .vc-nwc-body {
+    position: relative;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -1277,4 +1278,41 @@
     color: var(--nwc-bad);
     max-width: 140px;
     white-space: normal;
+}
+
+.vc-nwc-totop {
+    position: absolute;
+    right: 22px;
+    bottom: 16px;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgb(255 255 255 / 12%);
+    background: var(--nwc-accent);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 8px 22px rgb(0 0 0 / 45%), 0 0 0 0 rgb(55 105 212 / 0%);
+    opacity: 0;
+    transform: translateY(14px) scale(0.8);
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.12s, box-shadow 0.2s;
+}
+
+.vc-nwc-totop.vc-nwc-show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.vc-nwc-totop:hover {
+    background: #4a7ae8;
+    transform: translateY(-2px) scale(1.06);
+    box-shadow: 0 10px 26px rgb(0 0 0 / 45%), 0 0 18px 2px rgb(55 105 212 / 45%);
+}
+
+.vc-nwc-totop:active {
+    transform: scale(0.94);
 }
