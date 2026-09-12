@@ -130,8 +130,11 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
         const scroller = document.querySelector<HTMLElement>('[class*="messagesWrapper_"] [class*="scroller_"]');
         if (scroller) {
             const pin = () => { scroller.scrollTop = scroller.scrollHeight; };
+            // Pin repeatedly while the layout settles (card removed, spacer
+            // restored, composer shrinks) so the just-sent video isn't left
+            // cut off behind the composer.
             requestAnimationFrame(pin);
-            setTimeout(pin, 200);
+            [60, 150, 300, 500, 750].forEach(t => setTimeout(pin, t));
         }
     };
 
