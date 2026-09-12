@@ -54,6 +54,7 @@ interface Download {
     done: boolean;
     error?: string;
     type: string;
+    abort: AbortController;
 }
 
 const downloads = new Map<string, Download>();
@@ -62,12 +63,12 @@ let nextId = 0;
 export function startDownload(_: IpcMainInvokeEvent, url: string) {
     const u = assertAllowed(url);
     const id = String(++nextId);
-    const dl: Download = { received: 0, total: 0, chunks: [], done: false, type: "video/mp4" };
+    const dl: Download = { received: 0, total: 0, chunks: [], done: false, type: "video/mp4", abort: new AbortController() };
     downloads.set(id, dl);
 
     (async () => {
         try {
-            const res = await fetch(u, { signal: AbortSignal.timeout(180_000) });
+            const res = await fetch(u, { signal: AbortSignal.any([dl.abort.signal, AbortSignal.timeout(180_000)]) });
             if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
             dl.total = Number(res.headers.get("content-length")) || 0;
             dl.type = res.headers.get("content-type") ?? dl.type;
@@ -106,7 +107,9 @@ export function takeDownload(_: IpcMainInvokeEvent, id: string) {
 }
 
 export function cancelDownload(_: IpcMainInvokeEvent, id: string) {
+    const dl = downloads.get(id);
     downloads.delete(id);
+    if (dl && !dl.done) dl.abort.abort();
 }
 
 export async function post(_: IpcMainInvokeEvent, url: string) {

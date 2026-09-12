@@ -9,7 +9,7 @@ import { copyWithToast, insertTextIntoChatInputBox, sendMessage } from "@utils/d
 import { Channel } from "@vencord/discord-types";
 import { React, Toasts, Tooltip, UploadHandler, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
-import { baseUrl, cachedLibrary, Clip, downloadClipFile, fetchLibrary, formatDuration, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
+import { baseUrl, cachedLibrary, CancelledError, CancelToken, Clip, downloadClipFile, fetchLibrary, formatDuration, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, mediaUrl, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
 import { showProgressToast } from "./progressToast";
 import { settings } from "./settings";
 
@@ -553,6 +553,8 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
         if (action === "sendfile") {
             finish();
             const toast = showProgressToast(clip);
+            const token = new CancelToken();
+            toast.onCancel(() => token.cancel());
             let stage = "";
             const setStage = (label: string) => { if (stage !== label) { stage = label; toast.stage(label); } };
             try {
@@ -560,24 +562,29 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     clip,
                     channel.id,
                     (r, t) => { setStage("Fetching from netherware.xyz"); toast.progress(r, t); },
-                    (r, t) => { setStage("Uploading to Discord"); toast.progress(r, t); }
+                    (r, t) => { setStage("Uploading to Discord"); toast.progress(r, t); },
+                    token
                 );
                 toast.success("Sent");
             } catch (e) {
-                toast.fail(String((e as Error)?.message ?? e));
+                if (e instanceof CancelledError || token.cancelled) toast.cancelled();
+                else toast.fail(String((e as Error)?.message ?? e));
             }
             return;
         }
 
         finish();
         const toast = showProgressToast(clip);
+        const token = new CancelToken();
+        toast.onCancel(() => token.cancel());
         toast.stage("Fetching from netherware.xyz");
         try {
-            const file = await downloadClipFile(clip, (r, t) => toast.progress(r, t));
+            const file = await downloadClipFile(clip, (r, t) => toast.progress(r, t), token);
             UploadHandler.promptToUpload([file], channel, draftType);
             toast.success("Attached");
         } catch (e) {
-            toast.fail(String((e as Error)?.message ?? e));
+            if (e instanceof CancelledError || token.cancelled) toast.cancelled();
+            else toast.fail(String((e as Error)?.message ?? e));
         }
     }, [channel, draftType]);
 

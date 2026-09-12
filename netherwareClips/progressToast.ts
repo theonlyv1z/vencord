@@ -23,6 +23,8 @@ export interface ProgressToast {
     progress(received: number, total: number): void;
     success(label?: string): void;
     fail(label: string): void;
+    cancelled(): void;
+    onCancel(fn: () => void): void;
 }
 
 export function showProgressToast(clip: Clip): ProgressToast {
@@ -39,6 +41,7 @@ export function showProgressToast(clip: Clip): ProgressToast {
             <div class="vc-nwc-toast-bar"><div class="vc-nwc-toast-fill"></div></div>
         </div>
         <div class="vc-nwc-toast-status"></div>
+        <button class="vc-nwc-toast-x" type="button" aria-label="Cancel" title="Cancel">×</button>
     `;
 
     const title = root.querySelector<HTMLElement>(".vc-nwc-toast-title")!;
@@ -46,6 +49,12 @@ export function showProgressToast(clip: Clip): ProgressToast {
     const sub = root.querySelector<HTMLElement>(".vc-nwc-toast-sub")!;
     const fill = root.querySelector<HTMLElement>(".vc-nwc-toast-fill")!;
     const status = root.querySelector<HTMLElement>(".vc-nwc-toast-status")!;
+    const xBtn = root.querySelector<HTMLButtonElement>(".vc-nwc-toast-x")!;
+    let cancelHandler: (() => void) | null = null;
+    xBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        cancelHandler?.();
+    });
 
     const caption = (clip.caption || clip.file).replace(/#\S+/g, "").replace(/\s+/g, " ").trim() || clip.file;
     sub.textContent = `@${clip.author || "unknown"} · ${caption}`;
@@ -67,7 +76,22 @@ export function showProgressToast(clip: Clip): ProgressToast {
         }, delay);
     };
 
+    const settle = (cls: string, label: string, delay: number) => {
+        root.classList.remove("vc-nwc-toast-indeterminate");
+        root.classList.add(cls);
+        title.textContent = label;
+        pct.textContent = "";
+        xBtn.remove();
+        close(delay);
+    };
+
     return {
+        onCancel(fn) { cancelHandler = fn; },
+        cancelled() {
+            settle("vc-nwc-toast-cancelled", "Cancelled", 1400);
+            status.textContent = "";
+            fill.style.width = "0%";
+        },
         stage(label) {
             title.textContent = label;
             fill.style.width = "0%";
@@ -83,21 +107,13 @@ export function showProgressToast(clip: Clip): ProgressToast {
             status.textContent = `${formatSize(received)} / ${formatSize(total)}`;
         },
         success(label = "Sent") {
-            root.classList.remove("vc-nwc-toast-indeterminate");
-            root.classList.add("vc-nwc-toast-done");
-            title.textContent = label;
-            pct.textContent = "";
+            settle("vc-nwc-toast-done", label, 1600);
             fill.style.width = "100%";
             status.textContent = "";
-            close(1600);
         },
         fail(label) {
-            root.classList.remove("vc-nwc-toast-indeterminate");
-            root.classList.add("vc-nwc-toast-error");
-            title.textContent = "Failed";
-            pct.textContent = "";
+            settle("vc-nwc-toast-error", "Failed", 4000);
             status.textContent = label;
-            close(4000);
         }
     };
 }

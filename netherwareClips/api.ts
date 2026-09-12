@@ -156,24 +156,45 @@ export function warmEmbed(clip: Clip) {
 
 export type ProgressFn = (received: number, total: number) => void;
 
-export async function downloadClipFile(clip: Clip, onProgress?: ProgressFn): Promise<File> {
+export class CancelledError extends Error {
+    constructor() { super("Cancelled"); this.name = "CancelledError"; }
+}
+
+export class CancelToken {
+    cancelled = false;
+    private handlers: (() => void)[] = [];
+    onCancel(fn: () => void) { this.handlers.push(fn); }
+    cancel() {
+        if (this.cancelled) return;
+        this.cancelled = true;
+        for (const fn of this.handlers) { try { fn(); } catch { } }
+    }
+    throwIfCancelled() { if (this.cancelled) throw new CancelledError(); }
+}
+
+export async function downloadClipFile(clip: Clip, onProgress?: ProgressFn, token?: CancelToken): Promise<File> {
+    token?.throwIfCancelled();
     const id = await Native.startDownload(mediaUrl(clip));
+    token?.onCancel(() => { Native.cancelDownload(id); });
     while (true) {
+        token?.throwIfCancelled();
         const p = await Native.downloadProgress(id);
         onProgress?.(p.received, p.total || clip.size);
         if (p.done) {
-            if (p.error) { Native.cancelDownload(id); throw new Error(p.error); }
+            if (p.error) { Native.cancelDownload(id); token?.throwIfCancelled(); throw new Error(p.error); }
             break;
         }
         await new Promise(r => setTimeout(r, 80));
     }
+    token?.throwIfCancelled();
     const res = await Native.takeDownload(id);
     if (!res.ok) throw new Error(res.error);
     return new File([res.bytes!], clip.file, { type: res.type || "video/mp4" });
 }
 
-export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn) {
-    const file = await downloadClipFile(clip, onDownload);
+export async function sendClipFile(clip: Clip, channelId: string, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken) {
+    const file = await downloadClipFile(clip, onDownload, token);
+    token?.throwIfCancelled();
 
     const reply = PendingReplyStore.getPendingReply(channelId);
     if (reply) FluxDispatcher.dispatch({ type: "DELETE_PENDING_REPLY", channelId });
@@ -186,12 +207,20 @@ export async function sendClipFile(clip: Clip, channelId: string, onDownload?: P
 
     await new Promise<void>((resolve, reject) => {
         const { size } = file;
+        let posted = false;
+        token?.onCancel(() => {
+            if (posted) return;
+            try { upload.cancel(); } catch { }
+            reject(new CancelledError());
+        });
         const report = () => onUpload?.(Math.min(Math.max(upload.loaded ?? 0, upload.currentSize ?? 0), size), size);
         const tick = setInterval(report, 80);
         upload.on("progress", report);
         const stop = () => clearInterval(tick);
         upload.on("complete", () => {
             stop();
+            if (token?.cancelled) return;
+            posted = true;
             onUpload?.(size, size);
             RestAPI.post({
                 url: Constants.Endpoints.MESSAGES(channelId),
