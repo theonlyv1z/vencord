@@ -111,8 +111,8 @@
 }
 
 .vc-nwc-popout {
-    --nwc-accent: #3769d4;
-    --nwc-accent-soft: rgb(55 105 212 / 18%);
+    --nwc-accent: var(--brand-500, #3769d4);
+    --nwc-accent-soft: color-mix(in srgb, var(--brand-500, #3769d4) 18%, transparent);
     --nwc-red: #990c0e;
     --nwc-radius: 14px;
 
@@ -122,7 +122,7 @@
     height: clamp(360px, 68vh, 640px);
     border-radius: var(--nwc-radius);
     background: var(--background-surface-high, var(--background-floating, var(--background-secondary)));
-    box-shadow: 0 20px 60px rgb(0 0 0 / 45%), 0 0 0 1px var(--border-subtle, rgb(255 255 255 / 6%));
+    box-shadow: 0 20px 60px rgb(0 0 0 / 45%), 0 0 0 1px var(--border-subtle, var(--background-modifier-accent));
     color: var(--text-default, var(--text-normal));
     font-family: "Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     position: relative;
@@ -415,6 +415,12 @@
     box-shadow: 0 0 0 2px var(--nwc-accent), 0 8px 22px var(--nwc-accent-soft);
 }
 
+.vc-nwc-genre-count,
+.vc-nwc-section-title,
+.vc-nwc-flabel {
+    color: var(--text-muted);
+}
+
 .vc-nwc-genre-label {
     font-size: 13px;
     font-weight: 700;
@@ -466,7 +472,7 @@
     gap: 5px;
     padding: 4px 9px;
     border-radius: 999px;
-    border: 1px solid var(--border-subtle, rgb(255 255 255 / 8%));
+    border: 1px solid var(--border-subtle, var(--background-modifier-accent));
     background: var(--background-base-lower, var(--background-secondary-alt));
     color: var(--text-muted);
     font: inherit;
@@ -518,7 +524,7 @@
     flex-direction: column;
     border-radius: var(--nwc-radius);
     background: var(--background-surface-high, var(--background-floating, var(--background-secondary)));
-    box-shadow: 0 20px 60px rgb(0 0 0 / 45%), 0 0 0 1px var(--border-subtle, rgb(255 255 255 / 6%));
+    box-shadow: 0 20px 60px rgb(0 0 0 / 45%), 0 0 0 1px var(--border-subtle, var(--background-modifier-accent));
     opacity: 0;
     visibility: hidden;
     transform: translateX(-14px) scale(0.98);
@@ -556,8 +562,8 @@
     width: 28px;
     height: 28px;
     border-radius: 8px;
-    border: 1px solid var(--border-subtle, rgb(255 255 255 / 8%));
-    background: rgb(255 255 255 / 4%);
+    border: 1px solid var(--border-subtle, var(--background-modifier-accent));
+    background: var(--background-modifier-accent);
     color: var(--text-muted);
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
@@ -565,7 +571,7 @@
 
 .vc-nwc-fside-close:hover {
     color: var(--text-default, var(--text-normal));
-    background: rgb(255 255 255 / 10%);
+    background: var(--background-modifier-selected);
 }
 
 .vc-nwc-fside-body {
@@ -621,7 +627,7 @@
 }
 
 .vc-nwc-frow:hover {
-    background: rgb(255 255 255 / 5%);
+    background: var(--background-modifier-hover);
     transform: translateX(2px);
 }
 
@@ -630,9 +636,9 @@
 }
 
 .vc-nwc-frow.vc-nwc-on {
-    background: rgb(12 57 153 / 28%);
-    border-color: rgb(55 105 212 / 55%);
-    color: #dfe8ff;
+    background: color-mix(in srgb, var(--brand-500, #3769d4) 22%, transparent);
+    border-color: color-mix(in srgb, var(--brand-500, #3769d4) 60%, transparent);
+    color: var(--text-default, var(--text-normal));
 }
 
 .vc-nwc-cname {
@@ -651,7 +657,7 @@
 }
 
 .vc-nwc-frow.vc-nwc-on .vc-nwc-cnum {
-    color: #9cb6ff;
+    color: var(--brand-500, #3769d4);
 }
 
 .vc-nwc-fclear {
@@ -659,8 +665,8 @@
     margin-top: 4px;
     padding: 10px;
     border-radius: 10px;
-    border: 1px solid var(--border-subtle, rgb(255 255 255 / 10%));
-    background: rgb(255 255 255 / 4%);
+    border: 1px solid var(--border-subtle, var(--background-modifier-accent));
+    background: var(--background-modifier-accent);
     color: var(--text-default, var(--text-normal));
     font: inherit;
     font-size: 13px;
@@ -670,7 +676,7 @@
 }
 
 .vc-nwc-fclear:hover:not(:disabled) {
-    background: rgb(255 255 255 / 10%);
+    background: var(--background-modifier-selected);
 }
 
 .vc-nwc-fclear:disabled {
@@ -730,7 +736,7 @@
     border-radius: 8px;
     overflow: hidden;
     background: var(--background-base-lower, var(--background-secondary-alt));
-    border: 1px solid var(--border-subtle, rgb(255 255 255 / 8%));
+    border: 1px solid var(--border-subtle, var(--background-modifier-accent));
     cursor: pointer;
     outline: none;
     isolation: isolate;
@@ -740,7 +746,7 @@
 
 .vc-nwc-card:hover,
 .vc-nwc-card:focus-visible {
-    border-color: rgb(255 255 255 / 20%);
+    border-color: var(--border-strong, var(--background-modifier-selected));
     transform: translateY(-3px);
     box-shadow: 0 14px 34px rgb(0 0 0 / 50%);
     z-index: 1;
@@ -985,9 +991,9 @@
 }
 
 .vc-nwc-toast {
-    --nwc-accent: #3769d4;
-    --nwc-ok: #2ec27e;
-    --nwc-bad: #ed4245;
+    --nwc-accent: var(--brand-500, #3769d4);
+    --nwc-ok: var(--status-positive, #2ec27e);
+    --nwc-bad: var(--status-danger, #ed4245);
 
     display: grid;
     grid-template-columns: 40px 1fr auto;
@@ -996,8 +1002,8 @@
     width: min(440px, calc(100vw - 32px));
     padding: 10px 14px 10px 10px;
     border-radius: 14px;
-    background: var(--background-surface-higher, var(--background-floating, #111214));
-    box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px rgb(255 255 255 / 7%);
+    background: var(--background-surface-higher, var(--background-floating, var(--background-secondary)));
+    box-shadow: 0 16px 48px rgb(0 0 0 / 55%), 0 0 0 1px var(--border-subtle, var(--background-modifier-accent));
     color: var(--text-default, var(--text-normal));
     font-family: "Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     pointer-events: auto;
@@ -1090,7 +1096,7 @@
     height: 5px;
     margin-top: 3px;
     border-radius: 999px;
-    background: rgb(255 255 255 / 8%);
+    background: var(--background-modifier-accent);
     overflow: hidden;
 }
 
@@ -1315,4 +1321,27 @@
 
 .vc-nwc-totop:active {
     transform: scale(0.94);
+}
+
+/* Light theme: softer shadows, keep overlays on media white */
+.theme-light .vc-nwc-popout,
+.theme-light .vc-nwc-fside {
+    box-shadow: 0 16px 40px rgb(0 0 0 / 18%), 0 0 0 1px var(--border-subtle, rgb(0 0 0 / 8%));
+}
+
+.theme-light .vc-nwc-toast {
+    box-shadow: 0 12px 36px rgb(0 0 0 / 18%), 0 0 0 1px var(--border-subtle, rgb(0 0 0 / 8%));
+}
+
+.theme-light .vc-nwc-card:hover,
+.theme-light .vc-nwc-card:focus-visible {
+    box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
+}
+
+.theme-light .vc-nwc-genre:hover .vc-nwc-genre-cover {
+    box-shadow: 0 8px 20px rgb(0 0 0 / 18%);
+}
+
+.theme-light .vc-nwc-toast-bar {
+    background: rgb(0 0 0 / 8%);
 }
