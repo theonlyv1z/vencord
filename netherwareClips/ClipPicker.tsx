@@ -192,7 +192,8 @@ function GenreCardImpl({ id, label, count, cover, active, index, onClick }: {
             title={label}
         >
             <div className={cl("genre-cover")}>
-                {cover ? <img src={cover} alt="" loading="lazy" decoding="async" /> : <PinIcon />}
+                {cover && id !== "all" && <img className={cl("genre-bg")} src={cover} alt="" loading="lazy" decoding="async" aria-hidden="true" />}
+                {cover ? <img className={cl("genre-img")} src={cover} alt="" loading="lazy" decoding="async" /> : <PinIcon />}
                 <div className={cl("genre-shade")} />
             </div>
             <div className={cl("genre-label")}>{label}</div>

@@ -352,16 +352,31 @@
 }
 
 .vc-nwc-genre-cover img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
     display: block;
     transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.vc-nwc-genre-bg {
+    object-fit: cover;
+    transform: scale(1.3);
+    filter: blur(10px) brightness(0.55) saturate(1.3);
+    z-index: 0;
+}
+
+.vc-nwc-genre-img {
+    object-fit: contain;
+    z-index: 1;
+    filter: drop-shadow(0 2px 6px rgb(0 0 0 / 50%));
 }
 
 .vc-nwc-genre-shade {
     position: absolute;
     inset: 0;
+    z-index: 2;
     background: linear-gradient(180deg, rgb(0 0 0 / 0%) 55%, rgb(0 0 0 / 35%));
     pointer-events: none;
 }
@@ -371,6 +386,7 @@
 }
 
 .vc-nwc-genre.vc-nwc-logo .vc-nwc-genre-cover img {
+    position: static;
     width: 52%;
     height: 52%;
     object-fit: contain;
@@ -387,8 +403,12 @@
     box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
 }
 
-.vc-nwc-genre:hover .vc-nwc-genre-cover img {
+.vc-nwc-genre:hover .vc-nwc-genre-img {
     transform: scale(1.06);
+}
+
+.vc-nwc-genre:hover .vc-nwc-genre-bg {
+    transform: scale(1.4);
 }
 
 .vc-nwc-genre.vc-nwc-active .vc-nwc-genre-cover {
