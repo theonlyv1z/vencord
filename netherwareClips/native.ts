@@ -111,19 +111,42 @@ function runDownload(u: URL, dl: Download, onDone?: () => void) {
         const final = cachePath(dl.key);
         const part = final + ".part";
         let out: ReturnType<typeof createWriteStream> | null = null;
+        let streamError: unknown = null;
+        const aborted = () => dl.abort.signal.aborted;
         try {
             const res = await fetch(u, { signal: AbortSignal.any([dl.abort.signal, AbortSignal.timeout(180_000)]) });
             if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
             dl.total = Number(res.headers.get("content-length")) || 0;
             dl.type = res.headers.get("content-type") ?? dl.type;
             out = createWriteStream(part);
+            // A write that lands after the stream is torn down (abort mid-flight)
+            // emits "error" asynchronously; without a listener that's an uncaught
+            // main-process exception, so always swallow it here.
+            out.on("error", e => { streamError = e; });
             const reader = res.body.getReader();
             while (true) {
+                if (aborted() || out.destroyed || streamError) break;
                 const { done, value } = await reader.read();
                 if (done) break;
+                if (aborted() || out.destroyed || streamError) break;
                 dl.received += value.byteLength;
-                if (!out.write(value)) await new Promise<void>(r => out!.once("drain", () => r()));
+                if (!out.write(value)) {
+                    await new Promise<void>(r => {
+                        const onDrain = () => { cleanup(); r(); };
+                        const onAbort = () => { cleanup(); r(); };
+                        const cleanup = () => {
+                            out!.off("drain", onDrain);
+                            out!.off("close", onAbort);
+                            dl.abort.signal.removeEventListener("abort", onAbort);
+                        };
+                        out!.once("drain", onDrain);
+                        out!.once("close", onAbort);
+                        dl.abort.signal.addEventListener("abort", onAbort, { once: true });
+                    });
+                }
             }
+            if (aborted()) throw new Error("aborted");
+            if (streamError) throw streamError;
             await new Promise<void>((r, j) => out!.end((e: unknown) => e ? j(e) : r()));
             out = null;
             if (dl.total && dl.received !== dl.total) throw new Error("incomplete download");
@@ -131,7 +154,7 @@ function runDownload(u: URL, dl: Download, onDone?: () => void) {
             trimCache().catch(() => { });
         } catch (e) {
             dl.error = String((e as Error)?.message ?? e);
-            try { out?.destroy(); } catch { }
+            if (out && !out.destroyed) { try { out.destroy(); } catch { } }
             await discardPart(dl.key);
         } finally {
             dl.done = true;
