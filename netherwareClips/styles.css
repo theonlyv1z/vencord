@@ -299,6 +299,7 @@
     user-select: none;
     contain: content;
     overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
     gap: 10px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -322,6 +323,7 @@
 .vc-nwc-genre {
     flex: 0 0 auto;
     width: 128px;
+    scroll-snap-align: start;
     display: flex;
     flex-direction: column;
     align-items: flex-start;

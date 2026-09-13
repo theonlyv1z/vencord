@@ -324,8 +324,7 @@ const getClipCard = () => ClipCardMemo ??= React.memo(
     (a, b) => a.clip.id === b.clip.id && a.clip.v === b.clip.v && a.clip.pinned === b.clip.pinned && a.onPick === b.onPick && a.onCopy === b.onCopy
 ) as unknown as typeof ClipCardImpl;
 
-const WHEEL_EASE = 0.11;
-const WHEEL_STEP = 190;
+const WHEEL_CARDS = 2;
 
 function GenreStrip({ children }: { children: React.ReactNode; }) {
     const ref = useRef<HTMLDivElement>(null);
@@ -358,21 +357,16 @@ function GenreStrip({ children }: { children: React.ReactNode; }) {
         const ro = new ResizeObserver(updateEdges);
         ro.observe(el);
 
+        // Chunked scrolling: each wheel notch jumps a fixed number of cards and
+        // snaps to a card edge, instead of a continuous eased crawl. Rapid
+        // notches queue up onto the same target so it never feels sluggish.
         let target: number | null = null;
-        let raf = 0;
-        const chase = () => {
-            if (target === null) { raf = 0; return; }
-            const max = el.scrollWidth - el.clientWidth;
-            target = Math.max(0, Math.min(max, target));
-            const gap = target - el.scrollLeft;
-            if (Math.abs(gap) < 0.35) {
-                el.scrollLeft = target;
-                target = null;
-                raf = 0;
-                return;
-            }
-            el.scrollLeft += gap * WHEEL_EASE;
-            raf = requestAnimationFrame(chase);
+        let settle: number | undefined;
+        const cardStep = () => {
+            const first = el.querySelector<HTMLElement>(".vc-nwc-genre");
+            const w = first?.offsetWidth ?? 128;
+            const gap = parseFloat(getComputedStyle(el).columnGap || getComputedStyle(el).gap || "10") || 10;
+            return w + gap;
         };
         const onWheel = (e: WheelEvent) => {
             if (el.scrollWidth <= el.clientWidth) return;
@@ -380,9 +374,16 @@ function GenreStrip({ children }: { children: React.ReactNode; }) {
             e.stopPropagation();
             const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
             if (!delta) return;
+            const step = cardStep() * WHEEL_CARDS;
+            const max = el.scrollWidth - el.clientWidth;
             const from = target ?? el.scrollLeft;
-            target = from + Math.max(-WHEEL_STEP, Math.min(WHEEL_STEP, delta));
-            if (!raf) raf = requestAnimationFrame(chase);
+            const dir = Math.sign(delta);
+            let next = from + dir * step;
+            next = Math.round(next / cardStep()) * cardStep();
+            target = Math.max(0, Math.min(max, next));
+            el.scrollTo({ left: target, behavior: "smooth" });
+            window.clearTimeout(settle);
+            settle = window.setTimeout(() => { target = null; }, 260);
         };
         const onMouseDown = (e: MouseEvent) => {
             if (e.button !== 0) return;
@@ -405,7 +406,7 @@ function GenreStrip({ children }: { children: React.ReactNode; }) {
         window.addEventListener("mouseup", endDrag);
         return () => {
             ro.disconnect();
-            cancelAnimationFrame(raf);
+            window.clearTimeout(settle);
             cancelAnimationFrame(edgeRaf.current);
             el.removeEventListener("wheel", onWheel);
             el.removeEventListener("scroll", updateEdges);

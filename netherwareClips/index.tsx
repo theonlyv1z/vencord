@@ -112,7 +112,7 @@ const FONT_HREF = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wg
 export default definePlugin({
     name: "NetherwareClips",
     description: "Adds a chat bar button that opens the netherware.xyz clip library as a sticker-style picker: pick a genre, then drop a video into the message with one click.",
-    authors: [{ name: "v1z", id: 0n }],
+    authors: [{ name: "v1z", id: 1021857630068682772n }],
     tags: ["Chat", "Media"],
     settings,
 
