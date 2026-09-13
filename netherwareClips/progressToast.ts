@@ -49,9 +49,18 @@ function container() {
     ensureMounted(el);
 
     if (!reinsertObserver) {
+        // Discord churns the DOM constantly; coalesce to one check per frame and
+        // bail early unless our container actually got detached.
+        let pending = 0;
         reinsertObserver = new MutationObserver(() => {
-            const c = document.getElementById(CONTAINER_ID);
-            if (c && c.childElementCount > 0) ensureMounted(c);
+            if (pending) return;
+            pending = requestAnimationFrame(() => {
+                pending = 0;
+                const c = document.getElementById(CONTAINER_ID);
+                if (!c || c.childElementCount === 0) return;
+                const info = mountInfo();
+                if (info && c.parentElement !== info.parent) ensureMounted(c);
+            });
         });
         reinsertObserver.observe(document.body, { childList: true, subtree: true });
     }

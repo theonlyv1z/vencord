@@ -5,8 +5,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { readdir, readFile, rename, stat, unlink, utimes, writeFile } from "node:fs/promises";
+import { createWriteStream, existsSync, mkdirSync } from "node:fs";
+import { readdir, readFile, rename, stat, unlink, utimes } from "node:fs/promises";
 import { join } from "node:path";
 
 import { CspPolicies, ImageAndMediaSrc } from "@main/csp";
@@ -52,10 +52,12 @@ export async function fetchBytes(_: IpcMainInvokeEvent, url: string) {
     }
 }
 
+// Downloads stream straight to the on-disk cache: nothing is buffered in RAM
+// beyond the chunk in flight. Bytes are read back from disk only when taken.
 interface Download {
+    key: string;
     received: number;
     total: number;
-    chunks: Uint8Array[];
     done: boolean;
     error?: string;
     type: string;
@@ -80,26 +82,8 @@ function cachePath(url: string) {
     return join(getCacheDir(), createHash("sha1").update(url).digest("hex") + ".mp4");
 }
 
-async function cacheGet(url: string): Promise<Uint8Array | null> {
-    const file = cachePath(url);
-    if (!existsSync(file)) return null;
-    try {
-        const bytes = new Uint8Array(await readFile(file));
-        const now = new Date();
-        utimes(file, now, now).catch(() => { });
-        return bytes;
-    } catch {
-        return null;
-    }
-}
-
-async function cachePut(url: string, bytes: Uint8Array) {
-    try {
-        const file = cachePath(url);
-        await writeFile(file + ".part", bytes);
-        await rename(file + ".part", file);
-        await trimCache();
-    } catch { }
+async function discardPart(key: string) {
+    await unlink(cachePath(key) + ".part").catch(() => { });
 }
 
 async function trimCache() {
@@ -122,30 +106,33 @@ async function trimCache() {
     } catch { }
 }
 
-function joinChunks(dl: Download) {
-    const bytes = new Uint8Array(dl.received);
-    let off = 0;
-    for (const c of dl.chunks) { bytes.set(c, off); off += c.byteLength; }
-    return bytes;
-}
-
 function runDownload(u: URL, dl: Download, onDone?: () => void) {
     (async () => {
+        const final = cachePath(dl.key);
+        const part = final + ".part";
+        let out: ReturnType<typeof createWriteStream> | null = null;
         try {
             const res = await fetch(u, { signal: AbortSignal.any([dl.abort.signal, AbortSignal.timeout(180_000)]) });
             if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
             dl.total = Number(res.headers.get("content-length")) || 0;
             dl.type = res.headers.get("content-type") ?? dl.type;
+            out = createWriteStream(part);
             const reader = res.body.getReader();
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                dl.chunks.push(value);
                 dl.received += value.byteLength;
+                if (!out.write(value)) await new Promise<void>(r => out!.once("drain", () => r()));
             }
-            if (!dl.total || dl.received === dl.total) await cachePut(u.toString(), joinChunks(dl));
+            await new Promise<void>((r, j) => out!.end((e: unknown) => e ? j(e) : r()));
+            out = null;
+            if (dl.total && dl.received !== dl.total) throw new Error("incomplete download");
+            await rename(part, final);
+            trimCache().catch(() => { });
         } catch (e) {
             dl.error = String((e as Error)?.message ?? e);
+            try { out?.destroy(); } catch { }
+            await discardPart(dl.key);
         } finally {
             dl.done = true;
             onDone?.();
@@ -170,7 +157,7 @@ export function prefetch(_: IpcMainInvokeEvent, url: string) {
         prefetching.delete(activePrefetch.key);
     }
 
-    const dl: Download = { received: 0, total: 0, chunks: [], done: false, type: "video/mp4", abort: new AbortController() };
+    const dl: Download = { key, received: 0, total: 0, done: false, type: "video/mp4", abort: new AbortController() };
     prefetching.set(key, dl);
     activePrefetch = { key, dl };
     runDownload(u, dl, () => {
@@ -197,9 +184,11 @@ export async function startDownload(_: IpcMainInvokeEvent, url: string) {
     const key = u.toString();
     const id = String(++nextId);
 
-    const cached = await cacheGet(key);
-    if (cached) {
-        downloads.set(id, { received: cached.byteLength, total: cached.byteLength, chunks: [cached], done: true, type: "video/mp4", abort: new AbortController() });
+    const final = cachePath(key);
+    if (existsSync(final)) {
+        const size = (await stat(final).catch(() => null))?.size ?? 0;
+        utimes(final, new Date(), new Date()).catch(() => { });
+        downloads.set(id, { key, received: size, total: size, done: true, type: "video/mp4", abort: new AbortController() });
         return id;
     }
 
@@ -209,7 +198,7 @@ export async function startDownload(_: IpcMainInvokeEvent, url: string) {
         return id;
     }
 
-    const dl: Download = { received: 0, total: 0, chunks: [], done: false, type: "video/mp4", abort: new AbortController() };
+    const dl: Download = { key, received: 0, total: 0, done: false, type: "video/mp4", abort: new AbortController() };
     downloads.set(id, dl);
     runDownload(u, dl);
     return id;
@@ -221,12 +210,17 @@ export function downloadProgress(_: IpcMainInvokeEvent, id: string) {
     return { received: dl.received, total: dl.total, done: dl.done, error: dl.error };
 }
 
-export function takeDownload(_: IpcMainInvokeEvent, id: string) {
+export async function takeDownload(_: IpcMainInvokeEvent, id: string) {
     const dl = downloads.get(id);
     downloads.delete(id);
     if (!dl) return { ok: false, error: "unknown download" };
     if (dl.error) return { ok: false, error: dl.error };
-    return { ok: true, type: dl.type, bytes: dl.chunks.length === 1 ? dl.chunks[0] : joinChunks(dl) };
+    try {
+        const bytes = new Uint8Array(await readFile(cachePath(dl.key)));
+        return { ok: true, type: dl.type, bytes };
+    } catch (e) {
+        return { ok: false, error: String((e as Error)?.message ?? e) };
+    }
 }
 
 export function cancelDownload(_: IpcMainInvokeEvent, id: string) {
