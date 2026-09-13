@@ -324,7 +324,7 @@ const getClipCard = () => ClipCardMemo ??= React.memo(
     (a, b) => a.clip.id === b.clip.id && a.clip.v === b.clip.v && a.clip.pinned === b.clip.pinned && a.onPick === b.onPick && a.onCopy === b.onCopy
 ) as unknown as typeof ClipCardImpl;
 
-const WHEEL_CARDS = 2;
+const WHEEL_CARDS = 3;
 
 function GenreStrip({ children }: { children: React.ReactNode; }) {
     const ref = useRef<HTMLDivElement>(null);
