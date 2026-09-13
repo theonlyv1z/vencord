@@ -27,11 +27,9 @@ const ClipsIcon: IconComponent = ({ height = 20, width = 20, className }) => (
         height={height}
         className={className}
         viewBox="0 0 24 24"
-        fill="none"
+        fill="currentColor"
     >
-        <rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="2" />
-        <path d="M3 9h18M8 4v5M16 4v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M10.5 12.2v4.6a.5.5 0 0 0 .77.42l3.6-2.3a.5.5 0 0 0 0-.84l-3.6-2.3a.5.5 0 0 0-.77.42Z" fill="currentColor" />
+        <path d="M16.6 2h-3.2v13.4a2.85 2.85 0 1 1-2.85-2.85c.3 0 .58.05.85.13V9.4a6.1 6.1 0 1 0 5.2 6V8.6a7.9 7.9 0 0 0 4.4 1.35V6.75A4.75 4.75 0 0 1 16.6 2Z" />
     </svg>
 );
 
