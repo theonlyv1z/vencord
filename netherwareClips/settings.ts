@@ -14,6 +14,11 @@ export const settings = definePluginSettings({
         default: "https://netherware.xyz",
         restartNeeded: false
     },
+    autoUpdate: {
+        type: OptionType.BOOLEAN,
+        description: "Automatically pull plugin updates from GitHub and rebuild; you just restart Discord when prompted",
+        default: true
+    },
     hotkey: {
         type: OptionType.STRING,
         description: "Keyboard shortcut to open the picker (e.g. ctrl+shift+n, alt+n; blank to disable)",

@@ -7,12 +7,14 @@
 import "./styles.css";
 
 import { ChatBarButtonFactory } from "@api/ChatButtons";
+import { showNotification } from "@api/Notifications";
 import { classes } from "@utils/misc";
+import { relaunch } from "@utils/native";
 import definePlugin, { IconComponent } from "@utils/types";
 import { findCssClassesLazy } from "@webpack";
-import { Clickable, Popout, useRef, useState } from "@webpack/common";
+import { Button, Clickable, Popout, useRef, useState } from "@webpack/common";
 
-import { fetchLibrary, hydrate } from "./api";
+import { applyUpdate, checkForUpdate, fetchLibrary, hydrate } from "./api";
 import { cl, ClipPicker } from "./ClipPicker";
 import { settings } from "./settings";
 
@@ -83,6 +85,30 @@ const ClipsButton: ChatBarButtonFactory = ({ isAnyChat, channel, type }) => {
 };
 
 const BACKGROUND_REFRESH = 5 * 60_000;
+const UPDATE_CHECK_EVERY = 6 * 60 * 60_000;
+let updateTimer: number | undefined;
+let updateBusy = false;
+
+async function runUpdateCheck(manual = false) {
+    if (updateBusy || (!manual && !settings.store.autoUpdate)) return;
+    updateBusy = true;
+    try {
+        const check = await checkForUpdate();
+        if (!check.ok) { if (manual) showNotification({ title: "NetherwareClips", body: "Update check failed: " + check.error }); return; }
+        if (!check.behind) { if (manual) showNotification({ title: "NetherwareClips", body: `Up to date (${check.local})` }); return; }
+        const res = await applyUpdate();
+        if (!res.ok) { showNotification({ title: "NetherwareClips update failed", body: res.error ?? "unknown error" }); return; }
+        const summary = check.commits.slice(0, 3).map(c => "• " + c.message).join("\n");
+        showNotification({
+            title: `NetherwareClips updated (${check.behind} change${check.behind === 1 ? "" : "s"})`,
+            body: summary + "\n\nRestart Discord to apply.",
+            permanent: true,
+            onClick: relaunch
+        });
+    } finally {
+        updateBusy = false;
+    }
+}
 
 function matchesHotkey(e: KeyboardEvent, combo: string) {
     const parts = combo.toLowerCase().split("+").map(p => p.trim()).filter(Boolean);
@@ -132,11 +158,22 @@ export default definePlugin({
         hydrate().then(warm);
         refreshTimer = window.setInterval(warm, BACKGROUND_REFRESH);
         document.addEventListener("keydown", onHotkey, true);
+        window.setTimeout(() => runUpdateCheck(), 25_000);
+        updateTimer = window.setInterval(() => runUpdateCheck(), UPDATE_CHECK_EVERY);
     },
 
     stop() {
         document.getElementById(FONT_ID)?.remove();
         window.clearInterval(refreshTimer);
+        window.clearInterval(updateTimer);
         document.removeEventListener("keydown", onHotkey, true);
-    }
+    },
+
+    checkForUpdatesNow: () => runUpdateCheck(true),
+
+    settingsAboutComponent: () => (
+        <Button size={Button.Sizes.SMALL} onClick={() => runUpdateCheck(true)}>
+            Check for updates now
+        </Button>
+    )
 });

@@ -346,6 +346,9 @@ export async function sendClipFile(clip: Clip, channelId: string, _draftType: nu
     );
 }
 
+export const checkForUpdate = () => Native.checkForUpdate();
+export const applyUpdate = () => Native.applyUpdate();
+
 export function formatDuration(sec: number) {
     if (!sec || !isFinite(sec)) return "";
     const m = Math.floor(sec / 60);

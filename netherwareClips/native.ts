@@ -4,10 +4,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createWriteStream, existsSync, mkdirSync } from "node:fs";
 import { readdir, readFile, rename, stat, unlink, utimes } from "node:fs/promises";
 import { join } from "node:path";
+import { promisify } from "node:util";
 
 import { CspPolicies, ImageAndMediaSrc } from "@main/csp";
 import { app, IpcMainInvokeEvent } from "electron";
@@ -15,6 +17,8 @@ import { app, IpcMainInvokeEvent } from "electron";
 CspPolicies["netherware.xyz"] = ImageAndMediaSrc;
 CspPolicies["*.netherware.xyz"] = ImageAndMediaSrc;
 CspPolicies["fonts.gstatic.com"] = ["font-src"];
+
+const execFileP = promisify(execFile);
 
 const ALLOWED_HOST = /^([a-z0-9-]+\.)*netherware\.xyz$/i;
 
@@ -261,5 +265,42 @@ export async function post(_: IpcMainInvokeEvent, url: string) {
         return { ok: res.ok, status: res.status };
     } catch (e) {
         return { ok: false, status: -1, error: String((e as Error)?.message ?? e) };
+    }
+}
+
+// ── self-updater ───────────────────────────────────────────────────
+// Mirrors Vencord's own updater: the plugins repo lives in
+// <vencord>/src/userplugins; pull it fast-forward, rebuild Vencord, and let the
+// renderer prompt for a restart. __dirname is <vencord>/dist for a dev build.
+const VENCORD_DIR = join(__dirname, "..");
+const PLUGINS_DIR = join(VENCORD_DIR, "src", "userplugins");
+
+function git(...args: string[]) {
+    return execFileP("git", ["-C", PLUGINS_DIR, ...args]);
+}
+
+export async function checkForUpdate(_: IpcMainInvokeEvent) {
+    try {
+        await git("fetch", "--quiet");
+        const branch = (await git("branch", "--show-current")).stdout.trim() || "main";
+        const log = (await git("log", `HEAD..origin/${branch}`, "--pretty=format:%h/%s")).stdout.trim();
+        const commits = log ? log.split("\n").map(l => { const [hash, ...rest] = l.split("/"); return { hash, message: rest.join("/") }; }) : [];
+        const local = (await git("rev-parse", "--short", "HEAD")).stdout.trim();
+        return { ok: true, behind: commits.length, commits, local, branch };
+    } catch (e) {
+        return { ok: false, behind: 0, commits: [], error: String((e as Error)?.message ?? e) };
+    }
+}
+
+export async function applyUpdate(_: IpcMainInvokeEvent) {
+    try {
+        const pull = await git("pull", "--ff-only", "--quiet");
+        if (/error|fatal/i.test(pull.stderr)) throw new Error(pull.stderr.trim());
+        const build = await execFileP("node", ["scripts/build/build.mjs"], { cwd: VENCORD_DIR, maxBuffer: 16 * 1024 * 1024 });
+        if (/Build failed|error/i.test(build.stderr)) throw new Error(build.stderr.trim().slice(0, 400));
+        const local = (await git("rev-parse", "--short", "HEAD")).stdout.trim();
+        return { ok: true, local };
+    } catch (e) {
+        return { ok: false, error: String((e as Error)?.message ?? e) };
     }
 }
