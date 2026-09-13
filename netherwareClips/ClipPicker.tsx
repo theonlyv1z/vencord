@@ -381,9 +381,9 @@ function GenreStrip({ children }: { children: React.ReactNode; }) {
             let next = from + dir * step;
             next = Math.round(next / cardStep()) * cardStep();
             target = Math.max(0, Math.min(max, next));
-            el.scrollTo({ left: target, behavior: "smooth" });
+            el.scrollLeft = target;
             window.clearTimeout(settle);
-            settle = window.setTimeout(() => { target = null; }, 260);
+            settle = window.setTimeout(() => { target = null; }, 120);
         };
         const onMouseDown = (e: MouseEvent) => {
             if (e.button !== 0) return;
