@@ -43,9 +43,9 @@
     inset: 2px;
     border-radius: 8px;
     background:
-        radial-gradient(60% 60% at 50% 45%, rgb(88 140 255 / 55%), rgb(55 105 212 / 0%) 70%),
-        linear-gradient(180deg, rgb(55 105 212 / 28%), rgb(12 57 153 / 32%));
-    box-shadow: 0 0 0 1px rgb(120 160 255 / 25%), 0 0 18px rgb(55 105 212 / 45%);
+        radial-gradient(60% 60% at 50% 45%, rgb(168 120 255 / 60%), rgb(124 58 237 / 0%) 70%),
+        linear-gradient(180deg, rgb(124 58 237 / 32%), rgb(76 29 149 / 36%));
+    box-shadow: 0 0 0 1px rgb(180 140 255 / 30%), 0 0 18px rgb(139 92 246 / 50%);
     opacity: 0;
     transform: scale(0.6);
     transition: opacity 0.18s, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -58,7 +58,7 @@
     position: absolute;
     inset: 2px;
     border-radius: 8px;
-    background: radial-gradient(70% 70% at 50% 50%, rgb(140 180 255 / 35%), transparent 70%);
+    background: radial-gradient(70% 70% at 50% 50%, rgb(180 140 255 / 40%), transparent 70%);
     filter: blur(6px);
     opacity: 0;
     transform: scale(0.8);
@@ -83,7 +83,7 @@
 .vc-nwc-anchor:hover .vc-nwc-icon,
 .vc-nwc-anchor.vc-nwc-open .vc-nwc-icon {
     color: #fff;
-    filter: drop-shadow(0 0 6px rgb(120 160 255 / 70%));
+    filter: drop-shadow(0 0 6px rgb(180 140 255 / 75%));
 }
 
 @keyframes vc-nwc-pop {
