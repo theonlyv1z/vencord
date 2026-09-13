@@ -144,11 +144,14 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
         closeTimer = window.setTimeout(() => {
             root.classList.remove("vc-nwc-toast-in");
             root.classList.add("vc-nwc-toast-out");
+            // Reveal the video, restore the spacer and scroll WHILE the card is
+            // still fading out, so the layout is already settled by the time the
+            // card is gone — no visible jump after it closes.
+            release();
             window.setTimeout(() => {
                 root.remove();
                 const c = document.getElementById(CONTAINER_ID);
                 if (c && c.childElementCount === 0) c.remove();
-                release();
             }, 340);
         }, delay);
     };
