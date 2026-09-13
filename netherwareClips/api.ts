@@ -9,7 +9,7 @@ import { PluginNative } from "@utils/types";
 import { CloudUpload as TCloudUpload } from "@vencord/discord-types";
 import { CloudUploadPlatform } from "@vencord/discord-types/enums";
 import { findByPropsLazy, findLazy } from "@webpack";
-import { ChannelStore, FluxDispatcher, GuildStore, MessageActions, PendingReplyStore, UserStore } from "@webpack/common";
+import { ChannelStore, FluxDispatcher, GuildStore, MessageActions, MessageStore, PendingReplyStore, UserStore } from "@webpack/common";
 
 import { settings } from "./settings";
 
@@ -229,12 +229,9 @@ export function maxUploadSize(channelId?: string): number {
 let hideUploadRefs = 0;
 const HIDE_STYLE_ID = "vc-nwc-hide-upload-style";
 const HIDE_SELECTORS = [
-    // The newest message in the list — the clip we're sending — for the whole
-    // life of our card, so it doesn't peek beneath the card while uploading or
-    // during the "Sent" state. It's revealed (and scrolled into view) once the
-    // card is gone. The trailing spacer is a <div>, so :last-of-type on <li>
-    // reliably targets the last message row.
-    '[class*="scrollerInner_"] > li[class*="messageListItem"]:last-of-type',
+    // Our own just-sent clip message, tagged by JS (see tagOwnClipMessage) so we
+    // hide only OUR message — never someone else's that arrives mid-upload.
+    ".vc-nwc-hide-msg",
     // Discord's bottom spacer in the message list — normally the padding between
     // the last message and the composer. With our card in the composer it reads
     // as an empty gap above the card, so collapse it while we're showing.
@@ -263,6 +260,31 @@ const HIDE_SELECTORS = [
 ];
 const HIDE_CSS = HIDE_SELECTORS.join(",") + "{display:none !important;}";
 
+let tagObserver: MutationObserver | null = null;
+
+// Tag the newest message authored by the current user so the hide style can
+// collapse only OUR clip — scanning from the end so a message someone else
+// sends mid-upload is never the one we hide.
+function tagOwnClipMessage() {
+    const me = UserStore.getCurrentUser()?.id;
+    const scroller = document.querySelector('[class*="scrollerInner_"]');
+    if (!me || !scroller) return;
+    scroller.querySelectorAll(".vc-nwc-hide-msg").forEach(e => e.classList.remove("vc-nwc-hide-msg"));
+    const lis = scroller.querySelectorAll<HTMLElement>('li[class*="messageListItem"]');
+    for (let i = lis.length - 1; i >= 0; i--) {
+        const li = lis[i];
+        const m = /chat-messages-(\d+)-(\d+)/.exec(li.id || "");
+        let mine = false;
+        if (m) mine = MessageStore.getMessage(m[1], m[2])?.author?.id === me;
+        if (!mine && li.querySelector('[class*="isSending_"]')) mine = true;
+        if (mine) { li.classList.add("vc-nwc-hide-msg"); break; }
+    }
+}
+
+function clearOwnClipTag() {
+    document.querySelectorAll(".vc-nwc-hide-msg").forEach(e => e.classList.remove("vc-nwc-hide-msg"));
+}
+
 export function setUploadHidden(on: boolean) {
     hideUploadRefs = Math.max(0, hideUploadRefs + (on ? 1 : -1));
     const existing = document.getElementById(HIDE_STYLE_ID);
@@ -273,8 +295,19 @@ export function setUploadHidden(on: boolean) {
             el.textContent = HIDE_CSS;
             document.head.appendChild(el);
         }
+        tagOwnClipMessage();
+        if (!tagObserver) {
+            const scroller = document.querySelector('[class*="scrollerInner_"]');
+            if (scroller) {
+                tagObserver = new MutationObserver(() => tagOwnClipMessage());
+                tagObserver.observe(scroller, { childList: true, subtree: true });
+            }
+        }
     } else {
         existing?.remove();
+        tagObserver?.disconnect();
+        tagObserver = null;
+        clearOwnClipTag();
     }
 }
 
