@@ -828,6 +828,18 @@
     background: var(--nwc-red);
 }
 
+.vc-nwc-badge-big {
+    background: rgb(240 71 71 / 88%);
+}
+
+.vc-nwc-card.vc-nwc-too-big .vc-nwc-thumb {
+    filter: saturate(0.35) brightness(0.72);
+}
+
+.vc-nwc-card.vc-nwc-too-big:hover .vc-nwc-thumb {
+    filter: saturate(0.6) brightness(0.85);
+}
+
 .vc-nwc-meta {
     padding: 6px 8px 8px;
 }

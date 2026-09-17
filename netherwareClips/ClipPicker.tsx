@@ -9,7 +9,7 @@ import { copyWithToast, insertTextIntoChatInputBox, sendMessage } from "@utils/d
 import { Channel } from "@vencord/discord-types";
 import { React, Toasts, Tooltip, UploadHandler, useCallback, useEffect, useMemo, useRef, useState } from "@webpack/common";
 
-import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, maxUploadSize, mediaUrl, pendingReplyTarget, prefetchClip, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
+import { baseUrl, cachedLibrary, CancelledError, cancelPrefetchClip, CancelToken, Clip, downloadClipFile, fetchLibrary, formatSize, Genre, genreCoverUrl, hydrate, Library, linkFor, logoUrl, maxUploadSize, pendingReplyTarget, prefetchClip, previewUrl, sendClipFile, subscribe, thumbUrl, warmEmbed } from "./api";
 import { showProgressToast } from "./progressToast";
 import { settings } from "./settings";
 
@@ -241,7 +241,7 @@ function HoverPreview({ clip }: { clip: Clip; }) {
         <video
             ref={ref}
             className={cl("preview", { playing })}
-            src={mediaUrl(clip)}
+            src={previewUrl(clip)}
             loop
             playsInline
             preload="auto"
@@ -254,7 +254,8 @@ const HOVER_DELAY = 180;
 const PREFETCH_DELAY = 120;
 const TOP_THRESHOLD = 420;
 
-function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: number; onPick(clip: Clip, action?: PickAction): void; onCopy(clip: Clip): void; }) {
+function ClipCardImpl({ clip, index, onPick, onCopy, limit }: { clip: Clip; index: number; onPick(clip: Clip, action?: PickAction): void; onCopy(clip: Clip): void; limit: number; }) {
+    const tooBig = limit > 0 && clip.size > limit;
     const [hover, setHover] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [broken, setBroken] = useState(false);
@@ -278,7 +279,8 @@ function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: numb
 
     return (
         <div
-            className={cl("card", { pinned: clip.pinned, loaded })}
+            className={cl("card", { pinned: clip.pinned, loaded, "too-big": tooBig })}
+            title={tooBig ? `${formatSize(clip.size)} — over this channel's ${formatSize(limit)} limit (link still works)` : undefined}
             style={{ animationDelay: `${Math.min(index % 30, 18) * 22}ms` }}
             onMouseEnter={enter}
             onMouseLeave={leave}
@@ -303,6 +305,7 @@ function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: numb
                 {hover && settings.store.hoverPreview && <HoverPreview clip={clip} />}
                 <div className={cl("top")}>
                     {clip.pinned && <span className={cl("badge", "badge-pin")}>Pinned</span>}
+                    {tooBig && <span className={cl("badge", "badge-big")}>{formatSize(clip.size)}</span>}
                 </div>
                 <div className={cl("actions")} onClick={e => e.stopPropagation()}>
                     <ActionButton label="Insert link" icon={<LinkIcon />} primary={settings.store.clickAction === "insert"} onClick={() => onPick(clip, "insert")} />
@@ -321,7 +324,7 @@ function ClipCardImpl({ clip, index, onPick, onCopy }: { clip: Clip; index: numb
 let ClipCardMemo: typeof ClipCardImpl | undefined;
 const getClipCard = () => ClipCardMemo ??= React.memo(
     ClipCardImpl,
-    (a, b) => a.clip.id === b.clip.id && a.clip.v === b.clip.v && a.clip.pinned === b.clip.pinned && a.onPick === b.onPick && a.onCopy === b.onCopy
+    (a, b) => a.clip.id === b.clip.id && a.clip.v === b.clip.v && a.clip.pinned === b.clip.pinned && a.onPick === b.onPick && a.onCopy === b.onCopy && a.limit === b.limit
 ) as unknown as typeof ClipCardImpl;
 
 const WHEEL_CARDS = 3;
@@ -459,6 +462,7 @@ function Skeleton() {
 export function ClipPicker({ channel, draftType, close }: PickerProps) {
     const ClipCard = getClipCard();
     const GenreCard = getGenreCard();
+    const uploadLimit = useMemo(() => maxUploadSize(channel?.id), [channel?.id]);
     const [library, setLibrary] = useState<Library | null>(cachedLibrary);
     const [error, setError] = useState<string | null>(null);
     const [query, setQuery] = useState(lastQuery);
@@ -768,7 +772,7 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                 {library && (
                     <div className={cl("grid")} key={genre}>
                         {filtered.slice(0, shown).map((clip, i) => (
-                            <ClipCard key={clip.id} clip={clip} index={i} onPick={onPick} onCopy={onCopy} />
+                            <ClipCard key={clip.id} clip={clip} index={i} onPick={onPick} onCopy={onCopy} limit={uploadLimit} />
                         ))}
                     </div>
                 )}

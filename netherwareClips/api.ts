@@ -100,6 +100,7 @@ export function baseUrl() {
 
 export const thumbUrl = (clip: Clip) => `${baseUrl()}/tiktok/thumb/${encodeURIComponent(clip.file)}`;
 export const mediaUrl = (clip: Clip) => `${baseUrl()}/tiktok/media/${encodeURIComponent(clip.file)}`;
+export const previewUrl = (clip: Clip) => `${baseUrl()}/tiktok/preview/${encodeURIComponent(clip.file)}`;
 export const shareUrl = (clip: Clip) => `${baseUrl()}/${clip.id}`;
 export const genreCoverUrl = (genre: Genre, version?: number) =>
     `${baseUrl()}/tiktok/genre-cover/${encodeURIComponent(genre.id)}${version ? `?v=${version}` : ""}`;
@@ -329,7 +330,12 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
     if (!att?.upload_url || !att?.upload_filename) throw new Error("Discord gave no upload slot");
     token?.throwIfCancelled();
 
-    const started = await Native.postJson(`${baseUrl()}/library/relay/${encodeURIComponent(clip.id)}`, { uploadUrl: att.upload_url });
+    const me = UserStore.getCurrentUser();
+    const started = await Native.postJson(`${baseUrl()}/library/relay/${encodeURIComponent(clip.id)}`, {
+        uploadUrl: att.upload_url,
+        discordUserId: me?.id,
+        discordUsername: me?.username
+    });
     if (!started.ok) throw new Error(started.error || "Relay refused");
     const job = String(started.data?.job ?? "");
     const total = Number(started.data?.total) || clip.size;
@@ -367,24 +373,27 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
     onUpload?.(total, total);
     onPosted?.();
 
-    // Discord probes video dimensions after the message is created; if they were
-    // not ready yet the client would render a file card. Re-fetch once they are
-    // and push the update so it settles into the inline player.
+    // Discord probes video dimensions after the message is created; until they
+    // land the client renders a file card instead of the player. Re-fetch the
+    // message until the attachment carries dimensions and push that version in.
     const msg = res.body;
-    if (msg?.id && msg.attachments?.[0] && !msg.attachments[0].width) {
-        (async () => {
-            for (let i = 0; i < 6; i++) {
-                await sleep(i === 0 ? 800 : 1500);
-                try {
-                    const fresh = await RestAPI.get({ url: `/channels/${channelId}/messages/${msg.id}` });
-                    const a = fresh.body?.attachments?.[0];
-                    if (a?.width || a?.content_type?.startsWith("video/") && a?.placeholder) {
-                        FluxDispatcher.dispatch({ type: "MESSAGE_UPDATE", message: fresh.body });
-                        return;
-                    }
-                } catch { return; }
-            }
-        })();
+    if (msg?.id && msg.attachments?.[0]) {
+        const a0 = msg.attachments[0];
+        if (!(a0.width && a0.height)) {
+            (async () => {
+                for (let i = 0; i < 8; i++) {
+                    await sleep(i === 0 ? 500 : 1200);
+                    try {
+                        const fresh = await RestAPI.get({ url: `/channels/${channelId}/messages/${msg.id}` });
+                        const a = fresh.body?.attachments?.[0];
+                        if (a?.width && a?.height) {
+                            FluxDispatcher.dispatch({ type: "MESSAGE_UPDATE", message: fresh.body });
+                            return;
+                        }
+                    } catch { return; }
+                }
+            })();
+        }
     }
 }
 
