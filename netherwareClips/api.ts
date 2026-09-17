@@ -340,17 +340,29 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
     const job = String(started.data?.job ?? "");
     const total = Number(started.data?.total) || clip.size;
 
+    // The server can only see bytes handed to the network stack, which run well
+    // ahead of what Discord has actually received, so the raw figure jumps to
+    // ~100% almost at once. Ease the bar towards it at a bounded rate and hold
+    // it just short of full until the relay confirms completion.
+    const MIN_FILL_MS = 1400;
+    let shown = 0;
+    let last = performance.now();
     while (true) {
         token?.throwIfCancelled();
         const p = await Native.fetchJson(`${baseUrl()}/library/relay/${encodeURIComponent(job)}`);
         if (!p.ok) throw new Error(p.error || "Relay lost");
         const d = p.data as { sent: number; total: number; done: boolean; error: string | null; };
-        onUpload?.(Math.min(d.sent, d.done ? total : Math.max(0, total - 1)), total);
         if (d.done) {
             if (d.error) throw new Error("Relay failed: " + d.error);
+            onUpload?.(total, total);
             break;
         }
-        await sleep(100);
+        const now = performance.now();
+        const step = total * ((now - last) / MIN_FILL_MS);
+        last = now;
+        shown = Math.min(Math.min(d.sent, total * 0.97), shown + step);
+        onUpload?.(Math.floor(shown), total);
+        await sleep(60);
     }
     token?.throwIfCancelled();
     onStage?.("Posting");
