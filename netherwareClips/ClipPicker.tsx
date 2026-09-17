@@ -658,7 +658,8 @@ export function ClipPicker({ channel, draftType, close }: PickerProps) {
                     (r, t) => { if (stage === "Fetching clip") toast.progress(r, t); },
                     (r, t) => { uploading = true; window.clearTimeout(fetchTimer); setStage("Uploading to Discord"); toast.progress(r, t); },
                     token,
-                    () => toast.success("Sent")
+                    () => toast.success("Sent"),
+                    label => { uploading = true; window.clearTimeout(fetchTimer); setStage(label); }
                 );
             } catch (e) {
                 if (e instanceof CancelledError || token.cancelled) toast.cancelled();

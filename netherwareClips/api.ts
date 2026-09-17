@@ -318,7 +318,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 // Fast path: Discord hands out a signed upload slot, netherware.xyz PUTs the
 // clip into it over the datacenter link, and we post the message referencing
 // the finished upload. The video never crosses the user's connection.
-async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
+async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void, onStage?: (label: string) => void) {
     token?.throwIfCancelled();
     onUpload?.(0, clip.size);
 
@@ -345,7 +345,7 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
         const p = await Native.fetchJson(`${baseUrl()}/library/relay/${encodeURIComponent(job)}`);
         if (!p.ok) throw new Error(p.error || "Relay lost");
         const d = p.data as { sent: number; total: number; done: boolean; error: string | null; };
-        onUpload?.(Math.min(d.sent, total), total);
+        onUpload?.(Math.min(d.sent, d.done ? total : Math.max(0, total - 1)), total);
         if (d.done) {
             if (d.error) throw new Error("Relay failed: " + d.error);
             break;
@@ -353,6 +353,7 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
         await sleep(100);
     }
     token?.throwIfCancelled();
+    onStage?.("Posting");
 
     const reply = PendingReplyStore.getPendingReply(channelId);
     const replyOptions: any = reply ? MessageActions.getSendMessageOptionsForReply(reply) : {};
@@ -370,7 +371,6 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
             ...(replyOptions.allowedMentions ? { allowed_mentions: replyOptions.allowedMentions } : {})
         }
     });
-    onUpload?.(total, total);
     onPosted?.();
 
     // Discord probes video dimensions after the message is created; until they
@@ -397,13 +397,13 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
     }
 }
 
-export async function sendClipFile(clip: Clip, channelId: string, _draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
+export async function sendClipFile(clip: Clip, channelId: string, _draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void, onStage?: (label: string) => void) {
     token?.throwIfCancelled();
     const limit = maxUploadSize(channelId);
     if (clip.size > limit) throw new Error(`Too big for this channel — ${formatSize(clip.size)} vs a ${formatSize(limit)} limit`);
     if (settings.store.fastUpload) {
         try {
-            await sendClipRelay(clip, channelId, onUpload, token, onPosted);
+            await sendClipRelay(clip, channelId, onUpload, token, onPosted, onStage);
             return;
         } catch (e) {
             if (e instanceof CancelledError || token?.cancelled) throw e;
