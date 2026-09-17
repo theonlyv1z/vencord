@@ -263,10 +263,13 @@ const HIDE_SELECTORS = [
 const HIDE_CSS = HIDE_SELECTORS.join(",") + "{display:none !important;}";
 
 let tagObserver: MutationObserver | null = null;
+let hideSince = 0;
 
-// Tag the newest message authored by the current user so the hide style can
-// collapse only OUR clip — scanning from the end so a message someone else
-// sends mid-upload is never the one we hide.
+// Tag the message this send produced so the hide style can collapse only
+// THAT clip: it must be ours AND newer than the card (a still-pending row, or
+// a message whose snowflake postdates the moment the card appeared). Scanning
+// from the end means a message someone else sends mid-upload is never hidden,
+// and our own earlier messages are left alone.
 function tagOwnClipMessage() {
     const me = UserStore.getCurrentUser()?.id;
     const scroller = document.querySelector('[class*="scrollerInner_"]');
@@ -277,7 +280,10 @@ function tagOwnClipMessage() {
         const li = lis[i];
         const m = /chat-messages-(\d+)-(\d+)/.exec(li.id || "");
         let mine = false;
-        if (m) mine = MessageStore.getMessage(m[1], m[2])?.author?.id === me;
+        if (m) {
+            const msg = MessageStore.getMessage(m[1], m[2]);
+            mine = msg?.author?.id === me && (SnowflakeUtils.extractTimestamp(m[2]) >= hideSince - 2000 || !!li.querySelector('[class*="isSending_"]'));
+        }
         if (!mine && li.querySelector('[class*="isSending_"]')) mine = true;
         if (mine) { li.classList.add("vc-nwc-hide-msg"); break; }
     }
@@ -291,6 +297,7 @@ export function setUploadHidden(on: boolean) {
     hideUploadRefs = Math.max(0, hideUploadRefs + (on ? 1 : -1));
     const existing = document.getElementById(HIDE_STYLE_ID);
     if (hideUploadRefs > 0) {
+        if (on && hideUploadRefs === 1) hideSince = Date.now();
         if (!existing) {
             const el = document.createElement("style");
             el.id = HIDE_STYLE_ID;

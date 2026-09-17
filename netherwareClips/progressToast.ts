@@ -126,8 +126,18 @@ export function showProgressToast(clip: Clip, opts: { replyTo?: string | null; }
     // uploading row) for exactly as long as this card is on screen — one
     // coordinated layout shift instead of several.
     setUploadHidden(true);
+    // If the chat was sitting at the bottom, keep it there once the card has
+    // pushed the composer up — otherwise the newest message ends up tucked
+    // behind the card.
+    const scrollerAtMount = document.querySelector<HTMLElement>('[class*="messagesWrapper_"] [class*="scroller_"]');
+    const wasAtBottom = !!scrollerAtMount && scrollerAtMount.scrollHeight - scrollerAtMount.scrollTop - scrollerAtMount.clientHeight < 48;
     container().appendChild(root);
     requestAnimationFrame(() => root.classList.add("vc-nwc-toast-in"));
+    if (wasAtBottom && scrollerAtMount) {
+        const pin = () => { scrollerAtMount.scrollTop = scrollerAtMount.scrollHeight; };
+        requestAnimationFrame(pin);
+        [40, 120, 260].forEach(t => setTimeout(pin, t));
+    }
 
     let released = false;
     const release = () => {
