@@ -9,7 +9,7 @@ import { PluginNative } from "@utils/types";
 import { CloudUpload as TCloudUpload } from "@vencord/discord-types";
 import { CloudUploadPlatform } from "@vencord/discord-types/enums";
 import { findByPropsLazy, findLazy } from "@webpack";
-import { ChannelStore, FluxDispatcher, GuildStore, MessageActions, MessageStore, PendingReplyStore, UserStore } from "@webpack/common";
+import { ChannelStore, FluxDispatcher, GuildStore, MessageActions, MessageStore, PendingReplyStore, RestAPI, SnowflakeUtils, UserStore } from "@webpack/common";
 
 import { settings } from "./settings";
 
@@ -311,8 +311,93 @@ export function setUploadHidden(on: boolean) {
     }
 }
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// Fast path: Discord hands out a signed upload slot, netherware.xyz PUTs the
+// clip into it over the datacenter link, and we post the message referencing
+// the finished upload. The video never crosses the user's connection.
+async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
+    token?.throwIfCancelled();
+    onUpload?.(0, clip.size);
+
+    const slot = await RestAPI.post({
+        url: `/channels/${channelId}/attachments`,
+        body: { files: [{ filename: clip.file, file_size: clip.size, id: "0", is_clip: false }] }
+    });
+    const att = slot.body?.attachments?.[0];
+    if (!att?.upload_url || !att?.upload_filename) throw new Error("Discord gave no upload slot");
+    token?.throwIfCancelled();
+
+    const started = await Native.postJson(`${baseUrl()}/library/relay/${encodeURIComponent(clip.id)}`, { uploadUrl: att.upload_url });
+    if (!started.ok) throw new Error(started.error || "Relay refused");
+    const job = String(started.data?.job ?? "");
+    const total = Number(started.data?.total) || clip.size;
+
+    while (true) {
+        token?.throwIfCancelled();
+        const p = await Native.fetchJson(`${baseUrl()}/library/relay/${encodeURIComponent(job)}`);
+        if (!p.ok) throw new Error(p.error || "Relay lost");
+        const d = p.data as { sent: number; total: number; done: boolean; error: string | null; };
+        onUpload?.(Math.min(d.sent, total), total);
+        if (d.done) {
+            if (d.error) throw new Error("Relay failed: " + d.error);
+            break;
+        }
+        await sleep(100);
+    }
+    token?.throwIfCancelled();
+
+    const reply = PendingReplyStore.getPendingReply(channelId);
+    const replyOptions: any = reply ? MessageActions.getSendMessageOptionsForReply(reply) : {};
+    if (reply) FluxDispatcher.dispatch({ type: "DELETE_PENDING_REPLY", channelId });
+
+    const res = await RestAPI.post({
+        url: `/channels/${channelId}/messages`,
+        body: {
+            content: "",
+            tts: false,
+            flags: 0,
+            nonce: SnowflakeUtils.fromTimestamp(Date.now()),
+            attachments: [{ id: "0", filename: clip.file, uploaded_filename: att.upload_filename }],
+            ...(replyOptions.messageReference ? { message_reference: replyOptions.messageReference } : {}),
+            ...(replyOptions.allowedMentions ? { allowed_mentions: replyOptions.allowedMentions } : {})
+        }
+    });
+    onUpload?.(total, total);
+    onPosted?.();
+
+    // Discord probes video dimensions after the message is created; if they were
+    // not ready yet the client would render a file card. Re-fetch once they are
+    // and push the update so it settles into the inline player.
+    const msg = res.body;
+    if (msg?.id && msg.attachments?.[0] && !msg.attachments[0].width) {
+        (async () => {
+            for (let i = 0; i < 6; i++) {
+                await sleep(i === 0 ? 800 : 1500);
+                try {
+                    const fresh = await RestAPI.get({ url: `/channels/${channelId}/messages/${msg.id}` });
+                    const a = fresh.body?.attachments?.[0];
+                    if (a?.width || a?.content_type?.startsWith("video/") && a?.placeholder) {
+                        FluxDispatcher.dispatch({ type: "MESSAGE_UPDATE", message: fresh.body });
+                        return;
+                    }
+                } catch { return; }
+            }
+        })();
+    }
+}
+
 export async function sendClipFile(clip: Clip, channelId: string, _draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
     token?.throwIfCancelled();
+    if (settings.store.fastUpload && clip.size <= maxUploadSize(channelId)) {
+        try {
+            await sendClipRelay(clip, channelId, onUpload, token, onPosted);
+            return;
+        } catch (e) {
+            if (e instanceof CancelledError || token?.cancelled) throw e;
+            console.warn("[NetherwareClips] relay upload failed, falling back to local upload:", e);
+        }
+    }
     onDownload?.(0, clip.size);
     const file = await downloadClipFile(clip, onDownload, token);
     token?.throwIfCancelled();

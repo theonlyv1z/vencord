@@ -66,6 +66,11 @@ export const settings = definePluginSettings({
         description: "If a clip is bigger than your Discord upload limit, send it as an invisible embed link instead of failing",
         default: true
     },
+    fastUpload: {
+        type: OptionType.BOOLEAN,
+        description: "Send clips through netherware.xyz's server link instead of your own connection — the video never touches your bandwidth, so sending is near-instant",
+        default: true
+    },
     prefetchOnHover: {
         type: OptionType.BOOLEAN,
         description: "Start downloading a clip while you hover it so sending is instant (files are cached on disk, 1.5 GB max)",

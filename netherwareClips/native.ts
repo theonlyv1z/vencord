@@ -258,6 +258,23 @@ export function cancelDownload(_: IpcMainInvokeEvent, id: string) {
     dl.abort.abort();
 }
 
+export async function postJson(_: IpcMainInvokeEvent, url: string, body: unknown) {
+    const u = assertAllowed(url);
+    try {
+        const res = await fetch(u, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify(body ?? {}),
+            signal: AbortSignal.timeout(15_000)
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) return { ok: false, status: res.status, error: (data && data.error) || `HTTP ${res.status}` };
+        return { ok: true, status: res.status, data };
+    } catch (e) {
+        return { ok: false, status: -1, error: String((e as Error)?.message ?? e) };
+    }
+}
+
 export async function post(_: IpcMainInvokeEvent, url: string) {
     const u = assertAllowed(url);
     try {
