@@ -153,6 +153,7 @@ export function fetchLibrary(): Promise<Library> {
 
 export function prefetchClip(clip: Clip) {
     if (!settings.store.prefetchOnHover) return;
+    if (settings.store.fastUpload && settings.store.clickAction === "sendfile") return;
     Native.prefetch(mediaUrl(clip)).catch(() => { });
 }
 
@@ -389,7 +390,9 @@ async function sendClipRelay(clip: Clip, channelId: string, onUpload?: ProgressF
 
 export async function sendClipFile(clip: Clip, channelId: string, _draftType: number, onDownload?: ProgressFn, onUpload?: ProgressFn, token?: CancelToken, onPosted?: () => void) {
     token?.throwIfCancelled();
-    if (settings.store.fastUpload && clip.size <= maxUploadSize(channelId)) {
+    const limit = maxUploadSize(channelId);
+    if (clip.size > limit) throw new Error(`Too big for this channel — ${formatSize(clip.size)} vs a ${formatSize(limit)} limit`);
+    if (settings.store.fastUpload) {
         try {
             await sendClipRelay(clip, channelId, onUpload, token, onPosted);
             return;
