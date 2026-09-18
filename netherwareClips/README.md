@@ -10,8 +10,12 @@ search captions/creators, hover to preview (with sound), and click a clip to sen
 - Genre cover strip (wheel / drag / arrow scrolling) + search
 - Hover video previews with volume control
 - One click sends the mp4 directly (or inserts an invisible embed link / attaches for review — configurable)
-- Top-centre progress card showing download + upload progress
+- **Fast upload**: the clip is relayed from netherware.xyz straight into Discord's upload slot, so the video never crosses your connection — sends finish in a second or two regardless of your upstream (falls back to a local download + upload if the relay is unavailable)
+- Hover previews stream a lightweight 360p rendition, not the full-size file
+- Clips over the current channel's upload limit are badged and dimmed
+- Progress card in the composer showing upload → posting → sent, with cancel
 - Library is prefetched at startup, cached offline, and refreshed in the background
+- Auto-updates itself from this repo (git pull + rebuild, then prompts you to restart)
 
 ## Install
 
@@ -35,6 +39,8 @@ Restart Discord and enable **NetherwareClips** in Vencord → Plugins.
 | Hotkey | `ctrl+shift+n` |
 | Library origin | `https://netherware.xyz` |
 | Click action | Send the video file immediately |
+| Fast upload (relay via netherware.xyz) | on |
+| Auto-update | on |
 | Invisible link | on |
 | Close picker after choosing | on |
 | Hover preview / sound / volume | on / on / 60 |
